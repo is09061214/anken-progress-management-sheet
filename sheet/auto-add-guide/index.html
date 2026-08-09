@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+  <meta name="googlebot" content="noindex, nofollow">
+  <meta property="og:title" content="撮影日 自動追加のしくみ｜iMuseLLC">
+  <meta property="og:description" content="カレンダーに撮影予定を入れるだけで、案件がシートに載ってDiscordに通知が届く。仕組みと運用方法を図解でまとめました。">
+  <meta property="og:type" content="article">
+  <title>撮影日 自動追加のしくみ｜iMuseLLC</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23FFFFFF'/><rect x='8' y='8' width='84' height='84' rx='14' fill='none' stroke='%233B82F6' stroke-width='4'/><path d='M28 52 h44 M50 30 v44' fill='none' stroke='%233B82F6' stroke-width='8' stroke-linecap='round'/></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            ads: {
+              bg: '#FFFFFF',
+              surface: '#F8FAFC',
+              hover: '#F1F5F9',
+              border: '#E2E8F0',
+              accent: '#3B82F6',
+              'accent-light': '#2563EB',
+              text: '#1E293B',
+              muted: '#64748B',
+              dim: '#94A3B8',
+              positive: '#10B981',
+              negative: '#EF4444',
+              warning: '#F59E0B',
+            }
+          },
+          fontFamily: {
+            sans: ['"Noto Sans JP"', '"Hiragino Sans"', '"Hiragino Kaku Gothic ProN"', '"Yu Gothic UI"', '"Meiryo"', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @media print {
+      .no-print { display: none !important; }
+      body { border-top: none !important; }
+      .rounded-xl, .rounded-2xl { break-inside: avoid; }
+      .bg-clip-text.text-transparent {
+        -webkit-background-clip: initial !important;
+        background-clip: initial !important;
+        color: #2563EB !important;
+        -webkit-text-fill-color: #2563EB !important;
+      }
+    }
+  </style>
+</head>
+<body class="bg-ads-bg text-slate-600 antialiased leading-relaxed border-t-4 border-ads-accent">
+  <div class="no-print max-w-3xl mx-auto px-5 pt-2 flex justify-end">
+    <button onclick="window.print()" class="flex items-center gap-1.5 text-xs text-ads-dim hover:text-ads-accent transition-colors cursor-pointer">
+      <i data-lucide="download" class="w-3.5 h-3.5"></i>
+      PDF
+    </button>
+  </div>
+  <main class="max-w-3xl mx-auto px-5 py-10 md:py-16">
+
+<!-- ============================================================ -->
+<!--  HERO                                                        -->
+<!-- ============================================================ -->
+<div class="text-center mb-10 md:mb-14">
+  <div class="inline-flex items-center gap-2 bg-ads-accent/10 text-ads-accent-light px-4 py-1.5 rounded-full text-sm font-medium mb-6">
+    <i data-lucide="calendar-plus" class="w-4 h-4"></i>
+    iMuseLLC ／ 撮影日 自動追加のしくみ
+  </div>
+  <h1 class="text-3xl md:text-5xl font-black text-slate-900 tracking-tight mb-6">
+    撮影予定を入れるだけで、<br>
+    <span class="bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">案件がシートに載る</span>
+  </h1>
+  <p class="text-lg text-ads-muted max-w-xl mx-auto leading-relaxed">
+    いままで撮影のたびに手入力していた案件行。<br>
+    これからは<b class="text-slate-900">カレンダーに撮影予定を入れるだけ</b>。あとはロボットが毎朝ぜんぶやってくれます。
+  </p>
+</div>
+
+<!-- ============================================================ -->
+<!--  1. 全体フロー                                                -->
+<!-- ============================================================ -->
+<section class="mb-14 md:mb-20">
+  <div class="flex items-center gap-3 mb-6">
+    <div class="w-8 h-8 rounded-lg bg-ads-accent/10 flex items-center justify-center">
+      <i data-lucide="workflow" class="w-4 h-4 text-ads-accent"></i>
+    </div>
+    <h2 class="text-xl md:text-2xl font-black text-slate-900">全体の流れ ── 人がやるのは最初の1回だけ</h2>
+  </div>
+
+  <div class="flex flex-col gap-2">
+    <!-- step 1 -->
+    <div class="flex items-start gap-4 bg-white border-2 border-ads-accent rounded-xl p-5">
+      <div class="w-10 h-10 rounded-lg bg-ads-accent/10 flex items-center justify-center shrink-0">
+        <i data-lucide="user" class="w-5 h-5 text-ads-accent"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-2 mb-1">
+          <span class="text-[10px] font-black bg-ads-accent text-white px-2 py-0.5 rounded-full">人がやること</span>
+          <span class="font-black text-slate-900">Googleカレンダーに撮影予定を入れる</span>
+        </div>
+        <p class="text-sm text-ads-muted">タイトルは今までどおり <b class="text-slate-900">「【撮影】クライアント名@場所」</b>。命名を変える必要はありません。</p>
+      </div>
+    </div>
+    <div class="flex justify-center"><i data-lucide="chevron-down" class="w-5 h-5 text-ads-dim"></i></div>
+    <!-- step 2 -->
+    <div class="flex items-start gap-4 bg-ads-surface border border-ads-border rounded-xl p-5">
+      <div class="w-10 h-10 rounded-lg bg-ads-accent/10 flex items-center justify-center shrink-0">
+        <i data-lucide="bot" class="w-5 h-5 text-ads-accent"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-2 mb-1">
+          <span class="text-[10px] font-black bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full">自動</span>
+          <span class="font-black text-slate-900">毎朝6時、ロボットがカレンダーをスキャン</span>
+        </div>
+        <p class="text-sm text-ads-muted">過去7日〜未来90日の「【撮影】」予定をチェック。まだシートに載っていない撮影を見つけます。</p>
+      </div>
+    </div>
+    <div class="flex justify-center"><i data-lucide="chevron-down" class="w-5 h-5 text-ads-dim"></i></div>
+    <!-- step 3 -->
+    <div class="flex items-start gap-4 bg-ads-surface border border-ads-border rounded-xl p-5">
+      <div class="w-10 h-10 rounded-lg bg-ads-accent/10 flex items-center justify-center shrink-0">
+        <i data-lucide="search-check" class="w-5 h-5 text-ads-accent"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-2 mb-1">
+          <span class="text-[10px] font-black bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full">自動</span>
+          <span class="font-black text-slate-900">クライアントを見分けて、本数ぶんの行を作る</span>
+        </div>
+        <p class="text-sm text-ads-muted">「DEP様」→ DEP_m のように表記ゆれも吸収。クライアントごとに決まった本数（DEPなら8本）の行をマスターに追加します。</p>
+      </div>
+    </div>
+    <div class="flex justify-center"><i data-lucide="chevron-down" class="w-5 h-5 text-ads-dim"></i></div>
+    <!-- step 4 -->
+    <div class="flex items-start gap-4 bg-ads-surface border border-ads-border rounded-xl p-5">
+      <div class="w-10 h-10 rounded-lg bg-ads-accent/10 flex items-center justify-center shrink-0">
+        <i data-lucide="message-circle" class="w-5 h-5 text-ads-accent"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-2 mb-1">
+          <span class="text-[10px] font-black bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full">自動</span>
+          <span class="font-black text-slate-900">Discordに@everyoneで通知</span>
+        </div>
+        <p class="text-sm text-ads-muted">「#📆撮影日自動追加リマインド」に何が追加されたかが届きます。シートへのリンク付きなのでワンタップで確認OK。</p>
+      </div>
+    </div>
+    <div class="flex justify-center"><i data-lucide="chevron-down" class="w-5 h-5 text-ads-dim"></i></div>
+    <!-- step 5 -->
+    <div class="flex items-start gap-4 bg-white border-2 border-ads-positive rounded-xl p-5">
+      <div class="w-10 h-10 rounded-lg bg-ads-positive/10 flex items-center justify-center shrink-0">
+        <i data-lucide="users" class="w-5 h-5 text-ads-positive"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-2 mb-1">
+          <span class="text-[10px] font-black bg-ads-positive text-white px-2 py-0.5 rounded-full">人がやること</span>
+          <span class="font-black text-slate-900">本タイトルの入力と、制作担当のアサインだけ</span>
+        </div>
+        <p class="text-sm text-ads-muted">ここから先はいつもの運用。ダッシュボードの「情報不足」リストがそのままToDoになります。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!--  2. 行に何が入るか                                            -->
+<!-- ============================================================ -->
+<section class="mb-14 md:mb-20">
+  <div class="flex items-center gap-3 mb-6">
+    <div class="w-8 h-8 rounded-lg bg-ads-accent/10 flex items-center justify-center">
+      <i data-lucide="table-2" class="w-4 h-4 text-ads-accent"></i>
+    </div>
+    <h2 class="text-xl md:text-2xl font-black text-slate-900">追加される行には、ここまで入っている</h2>
+  </div>
+
+  <div class="grid grid-cols-2 md:grid-cols-3 gap-2 mb-4">
+    <div class="bg-ads-surface border border-ads-border rounded-xl p-4">
+      <div class="text-[11px] font-bold text-ads-dim mb-1">クライアント</div>
+      <div class="font-black text-slate-900 text-sm">DEP_m</div>
+      <div class="text-[11px] text-ads-positive font-bold mt-1">✓ 自動</div>
+    </div>
+    <div class="bg-ads-surface border border-ads-border rounded-xl p-4">
+      <div class="text-[11px] font-bold text-ads-dim mb-1">撮影日</div>
+      <div class="font-black text-slate-900 text-sm">7/6</div>
+      <div class="text-[11px] text-ads-positive font-bold mt-1">✓ 自動</div>
+    </div>
+    <div class="bg-ads-surface border border-ads-border rounded-xl p-4">
+      <div class="text-[11px] font-bold text-ads-dim mb-1">投稿予定日</div>
+      <div class="font-black text-slate-900 text-sm">8/16（続きに配置）</div>
+      <div class="text-[11px] text-ads-positive font-bold mt-1">✓ 自動</div>
+    </div>
+    <div class="bg-ads-surface border border-ads-border rounded-xl p-4">
+      <div class="text-[11px] font-bold text-ads-dim mb-1">仮タイトル</div>
+      <div class="font-black text-slate-900 text-sm">7/6撮影 ①</div>
+      <div class="text-[11px] text-ads-positive font-bold mt-1">✓ 自動（あとで上書き）</div>
+    </div>
+    <div class="bg-ads-surface border border-ads-border rounded-xl p-4">
+      <div class="text-[11px] font-bold text-ads-dim mb-1">ステータス</div>
+      <div class="font-black text-slate-900 text-sm">タイトル待ち</div>
+      <div class="text-[11px] text-ads-positive font-bold mt-1">✓ 自動</div>
+    </div>
+    <div class="bg-ads-surface border border-ads-border rounded-xl p-4">
+      <div class="text-[11px] font-bold text-ads-dim mb-1">BO担当</div>
+      <div class="font-black text-slate-900 text-sm">増田／岩渕／砂田</div>
+      <div class="text-[11px] text-ads-positive font-bold mt-1">✓ 自動（クライアント別）</div>
+    </div>
+  </div>
+
+  <div class="flex items-start gap-3 bg-white border-2 border-ads-warning/60 rounded-xl p-4">
+    <i data-lucide="pen-line" class="w-5 h-5 text-ads-warning shrink-0 mt-0.5"></i>
+    <p class="text-sm text-ads-muted"><b class="text-slate-900">人が入れるのは「動画タイトル」と「制作担当」の2つだけ。</b>制作締切・サムネ締切などの工程締切は、撮影日からシートが勝手に計算します。</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!--  3. クライアント別の設定                                       -->
+<!-- ============================================================ -->
+<section class="mb-14 md:mb-20">
+  <div class="flex items-center gap-3 mb-6">
+    <div class="w-8 h-8 rounded-lg bg-ads-accent/10 flex items-center justify-center">
+      <i data-lucide="settings-2" class="w-4 h-4 text-ads-accent"></i>
+    </div>
+    <h2 class="text-xl md:text-2xl font-black text-slate-900">クライアントごとの「本数」と「投稿曜日」</h2>
+  </div>
+  <p class="text-sm text-ads-muted mb-4">1回の撮影で何本作るか・毎週何曜日に投稿するかはクライアントごとに固定。<b class="text-slate-900">「自動追加設定」シート</b>にこの表が入っていて、いつでも変えられます。</p>
+
+  <div class="overflow-x-auto rounded-xl border border-ads-border">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="bg-ads-surface text-left">
+          <th class="px-4 py-2.5 font-bold text-slate-900 text-xs">クライアント</th>
+          <th class="px-4 py-2.5 font-bold text-slate-900 text-xs">本数/撮影</th>
+          <th class="px-4 py-2.5 font-bold text-slate-900 text-xs">投稿曜日</th>
+          <th class="px-4 py-2.5 font-bold text-slate-900 text-xs">BO</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-ads-border">
+        <tr><td class="px-4 py-2 font-bold text-slate-900">DEP_m</td><td class="px-4 py-2 font-black text-ads-accent">8本</td><td class="px-4 py-2">水・日</td><td class="px-4 py-2">増田</td></tr>
+        <tr><td class="px-4 py-2 font-bold text-slate-900">ハイテクノ_m</td><td class="px-4 py-2 font-black text-ads-accent">3本</td><td class="px-4 py-2">木</td><td class="px-4 py-2">増田</td></tr>
+        <tr><td class="px-4 py-2 font-bold text-slate-900">バイオテック_m</td><td class="px-4 py-2 font-black text-ads-accent">4本</td><td class="px-4 py-2">金</td><td class="px-4 py-2">増田</td></tr>
+        <tr><td class="px-4 py-2 font-bold text-slate-900">mug_m ／ アーバンガレージ_m</td><td class="px-4 py-2 font-black text-ads-accent">4本</td><td class="px-4 py-2">金</td><td class="px-4 py-2">岩渕</td></tr>
+        <tr><td class="px-4 py-2 font-bold text-slate-900">1sec._m</td><td class="px-4 py-2 font-black text-ads-accent">4本</td><td class="px-4 py-2">火</td><td class="px-4 py-2">増田</td></tr>
+        <tr><td class="px-4 py-2 font-bold text-slate-900">そうぞう_m</td><td class="px-4 py-2 font-black text-ads-accent">4本</td><td class="px-4 py-2">火</td><td class="px-4 py-2">岩渕</td></tr>
+        <tr><td class="px-4 py-2 font-bold text-slate-900">角川春樹</td><td class="px-4 py-2 font-black text-ads-accent">4本</td><td class="px-4 py-2">月</td><td class="px-4 py-2">増田</td></tr>
+        <tr><td class="px-4 py-2 font-bold text-slate-900">井口鉱油_m</td><td class="px-4 py-2 font-black text-ads-accent">2本</td><td class="px-4 py-2 text-ads-dim">未定→空欄</td><td class="px-4 py-2">岩渕</td></tr>
+        <tr><td class="px-4 py-2 font-bold text-slate-900">四国物産_m ／ EmpowerX</td><td class="px-4 py-2 font-black text-ads-accent">1本</td><td class="px-4 py-2 text-ads-dim">未定→空欄</td><td class="px-4 py-2">岩渕</td></tr>
+        <tr><td class="px-4 py-2 font-bold text-slate-900">髭男会計士（宮川さん）</td><td class="px-4 py-2 font-black text-ads-accent">4本</td><td class="px-4 py-2 text-ads-dim">未定→空欄</td><td class="px-4 py-2">岩渕</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="text-xs text-ads-dim mt-2">※投稿曜日が未定のクライアントは、投稿日を空欄のまま追加 → あとで手入力。DEPで9本撮れた回は手動で1行だけ足す運用です。</p>
+</section>
+
+<!-- ============================================================ -->
+<!--  4. 投稿日の計算                                              -->
+<!-- ============================================================ -->
+<section class="mb-14 md:mb-20">
+  <div class="flex items-center gap-3 mb-6">
+    <div class="w-8 h-8 rounded-lg bg-ads-accent/10 flex items-center justify-center">
+      <i data-lucide="calendar-days" class="w-4 h-4 text-ads-accent"></i>
+    </div>
+    <h2 class="text-xl md:text-2xl font-black text-slate-900">投稿日は「いまの予定の続き」に積まれる</h2>
+  </div>
+  <p class="text-sm text-ads-muted mb-5">新しい撮影分の投稿日は、<b class="text-slate-900">シートにあるそのクライアントの最後の投稿予定日の翌週から</b>順番に埋まります。投稿カレンダーが途切れず、重複もしません。</p>
+
+  <div class="bg-ads-surface border border-ads-border rounded-xl p-5">
+    <div class="text-[11px] font-bold text-ads-dim mb-3">例：DEP_m（水・日投稿）で 7/6 に撮影した場合</div>
+    <div class="flex flex-wrap items-center gap-1.5">
+      <div class="bg-white border border-ads-border rounded-lg px-3 py-2 text-center">
+        <div class="text-[10px] text-ads-dim font-bold">既存の最終</div>
+        <div class="text-sm font-black text-slate-500">8/12(水)</div>
+      </div>
+      <i data-lucide="arrow-right" class="w-4 h-4 text-ads-dim shrink-0"></i>
+      <div class="bg-white border-2 border-ads-accent rounded-lg px-3 py-2 text-center">
+        <div class="text-[10px] text-ads-accent font-bold">①</div>
+        <div class="text-sm font-black text-slate-900">8/16(日)</div>
+      </div>
+      <div class="bg-white border-2 border-ads-accent rounded-lg px-3 py-2 text-center">
+        <div class="text-[10px] text-ads-accent font-bold">②</div>
+        <div class="text-sm font-black text-slate-900">8/19(水)</div>
+      </div>
+      <div class="bg-white border-2 border-ads-accent rounded-lg px-3 py-2 text-center">
+        <div class="text-[10px] text-ads-accent font-bold">③</div>
+        <div class="text-sm font-black text-slate-900">8/23(日)</div>
+      </div>
+      <div class="text-ads-dim text-sm font-bold px-1">…</div>
+      <div class="bg-white border-2 border-ads-accent rounded-lg px-3 py-2 text-center">
+        <div class="text-[10px] text-ads-accent font-bold">⑧</div>
+        <div class="text-sm font-black text-slate-900">9/9(水)</div>
+      </div>
+    </div>
+    <div class="flex items-start gap-2 mt-4 pt-4 border-t border-ads-border">
+      <i data-lucide="info" class="w-4 h-4 text-ads-accent shrink-0 mt-0.5"></i>
+      <p class="text-xs text-ads-muted">既存の予定がない（or 全部過去）のときは、<b class="text-slate-900">撮影日＋14日</b>以降の最初の投稿曜日からスタート。編集が間に合わない日程は最初から組まれません。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!--  5. スキップの判定                                            -->
+<!-- ============================================================ -->
+<section class="mb-14 md:mb-20">
+  <div class="flex items-center gap-3 mb-6">
+    <div class="w-8 h-8 rounded-lg bg-ads-accent/10 flex items-center justify-center">
+      <i data-lucide="filter" class="w-4 h-4 text-ads-accent"></i>
+    </div>
+    <h2 class="text-xl md:text-2xl font-black text-slate-900">追加されない予定もある ── 3つのスキップ</h2>
+  </div>
+
+  <div class="grid md:grid-cols-3 gap-3">
+    <div class="bg-ads-surface border border-ads-border rounded-xl p-5">
+      <div class="flex items-center gap-2 mb-2">
+        <span class="text-lg">⏸️</span>
+        <div class="font-black text-slate-900 text-sm">（仮）付きの予定</div>
+      </div>
+      <p class="text-xs text-ads-muted mb-2">「（仮）【撮影】〜」は確定前なのでスキップ。</p>
+      <div class="text-[11px] bg-white border border-ads-border rounded-lg p-2 text-ads-muted">タイトルから（仮）を消せば、<b class="text-slate-900">翌朝自動で拾われる</b></div>
+    </div>
+    <div class="bg-ads-surface border border-ads-border rounded-xl p-5">
+      <div class="flex items-center gap-2 mb-2">
+        <span class="text-lg">🚫</span>
+        <div class="font-black text-slate-900 text-sm">対象外リスト</div>
+      </div>
+      <p class="text-xs text-ads-muted mb-2">The Neutral・DEPサミットは案件化しない撮影なので無視。</p>
+      <div class="text-[11px] bg-white border border-ads-border rounded-lg p-2 text-ads-muted">_d（ダイレクト案件）も対象外。<b class="text-slate-900">必要なら手動で行を追加</b></div>
+    </div>
+    <div class="bg-ads-surface border border-ads-border rounded-xl p-5">
+      <div class="flex items-center gap-2 mb-2">
+        <span class="text-lg">❓</span>
+        <div class="font-black text-slate-900 text-sm">一覧に無い名前</div>
+      </div>
+      <p class="text-xs text-ads-muted mb-2">新規クライアントなど、表で見分けられない名前はスキップしてDiscordでお知らせ。</p>
+      <div class="text-[11px] bg-white border border-ads-border rounded-lg p-2 text-ads-muted">「自動追加設定」に別名を1個足せば<b class="text-slate-900">翌朝から自動化</b></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!--  6. Discord通知                                               -->
+<!-- ============================================================ -->
+<section class="mb-14 md:mb-20">
+  <div class="flex items-center gap-3 mb-6">
+    <div class="w-8 h-8 rounded-lg bg-ads-accent/10 flex items-center justify-center">
+      <i data-lucide="bell-ring" class="w-4 h-4 text-ads-accent"></i>
+    </div>
+    <h2 class="text-xl md:text-2xl font-black text-slate-900">Discord通知の読み方</h2>
+  </div>
+  <p class="text-sm text-ads-muted mb-4">動きがあった朝だけ「#📆撮影日自動追加リマインド」に1通届きます。<b class="text-slate-900">何もない日は通知なし</b>（静かなまま）。</p>
+
+  <!-- discord mock -->
+  <div class="rounded-xl overflow-hidden border border-slate-700 mb-4" style="background:#313338;">
+    <div class="px-4 py-2 text-xs font-bold text-slate-400 border-b border-slate-700 flex items-center gap-2">
+      <span>#</span><span>📆｜撮影日自動追加リマインド</span>
+    </div>
+    <div class="p-4 flex gap-3">
+      <div class="w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-black shrink-0">ミュ</div>
+      <div class="text-sm leading-relaxed min-w-0">
+        <div class="flex items-center gap-2 mb-1">
+          <span class="font-bold text-slate-100">ミュー</span>
+          <span class="text-[9px] bg-indigo-500 text-white px-1 rounded font-bold">アプリ</span>
+          <span class="text-[10px] text-slate-500">今日 06:00</span>
+        </div>
+        <div class="text-slate-200">
+          <span class="bg-indigo-500/30 text-indigo-300 rounded px-0.5">@everyone</span><br>
+          📋 <b>案件シート自動追加</b>（7/4 06:00）<br>
+          🔗 シートを開く → <span class="text-blue-400 underline">docs.google.com/spreadsheets/…</span><br>
+          ✅ DEP_m：7/6撮影 → 8本追加（投稿 8/16〜9/9）<br>
+          ✅ EmpowerX：7/8撮影 → 1本追加（投稿日は手動入力待ち）<br>
+          ❓ 「新規クライアントA」（7/20撮影）は一覧に無い名前のためスキップしました<br>
+          ⚠ mug_m：撮影日が 7/13 → 7/14 に変更されています。シートの撮影日・投稿日を直してください
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid md:grid-cols-3 gap-3">
+    <div class="flex items-start gap-3 bg-ads-surface border border-ads-border rounded-xl p-4">
+      <span class="text-lg shrink-0">✅</span>
+      <div>
+        <div class="font-bold text-slate-900 text-sm mb-0.5">追加された</div>
+        <p class="text-xs text-ads-muted">見るだけでOK。タイトルと制作担当はあとで入れる</p>
+      </div>
+    </div>
+    <div class="flex items-start gap-3 bg-ads-surface border border-ads-border rounded-xl p-4">
+      <span class="text-lg shrink-0">❓</span>
+      <div>
+        <div class="font-bold text-slate-900 text-sm mb-0.5">名前が分からなかった</div>
+        <p class="text-xs text-ads-muted">「自動追加設定」の別名欄にその名前を追加する</p>
+      </div>
+    </div>
+    <div class="flex items-start gap-3 bg-ads-surface border border-ads-border rounded-xl p-4">
+      <span class="text-lg shrink-0">⚠</span>
+      <div>
+        <div class="font-bold text-slate-900 text-sm mb-0.5">撮影日が変わった／消えた</div>
+        <p class="text-xs text-ads-muted">シートは自動で書き換えないので、該当行を手で直す（メモ欄にも⚠が付く）</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!--  7. 日々の運用                                                -->
+<!-- ============================================================ -->
+<section class="mb-14 md:mb-20">
+  <div class="flex items-center gap-3 mb-6">
+    <div class="w-8 h-8 rounded-lg bg-ads-accent/10 flex items-center justify-center">
+      <i data-lucide="list-checks" class="w-4 h-4 text-ads-accent"></i>
+    </div>
+    <h2 class="text-xl md:text-2xl font-black text-slate-900">日々の運用 ── やることはこれだけ</h2>
+  </div>
+
+  <div class="flex flex-col gap-2.5">
+    <div class="flex items-start gap-3 bg-ads-surface border border-ads-border rounded-xl p-4">
+      <div class="w-7 h-7 rounded-full bg-white border-2 border-ads-accent text-ads-accent flex items-center justify-center font-black text-xs shrink-0">1</div>
+      <div>
+        <div class="font-bold text-slate-900 text-sm mb-0.5">撮影が決まったら、カレンダーに「【撮影】クライアント名@場所」</div>
+        <p class="text-xs text-ads-muted">まだ仮なら「（仮）【撮影】〜」にしておく。確定したら（仮）を消すだけ</p>
+      </div>
+    </div>
+    <div class="flex items-start gap-3 bg-ads-surface border border-ads-border rounded-xl p-4">
+      <div class="w-7 h-7 rounded-full bg-white border-2 border-ads-accent text-ads-accent flex items-center justify-center font-black text-xs shrink-0">2</div>
+      <div>
+        <div class="font-bold text-slate-900 text-sm mb-0.5">朝のDiscord通知をチラ見</div>
+        <p class="text-xs text-ads-muted">✅は確認だけ。❓と⚠が来たときだけ1アクション</p>
+      </div>
+    </div>
+    <div class="flex items-start gap-3 bg-ads-surface border border-ads-border rounded-xl p-4">
+      <div class="w-7 h-7 rounded-full bg-white border-2 border-ads-accent text-ads-accent flex items-center justify-center font-black text-xs shrink-0">3</div>
+      <div>
+        <div class="font-bold text-slate-900 text-sm mb-0.5">タイトルが決まったら「7/6撮影 ①」を本タイトルに上書き</div>
+        <p class="text-xs text-ads-muted">ステータス「タイトル待ち」も進めて、制作担当をアサイン。あとはいつもの進行管理</p>
+      </div>
+    </div>
+    <div class="flex items-start gap-3 bg-ads-surface border border-ads-border rounded-xl p-4">
+      <div class="w-7 h-7 rounded-full bg-white border-2 border-ads-warning text-ads-warning flex items-center justify-center font-black text-xs shrink-0">!</div>
+      <div>
+        <div class="font-bold text-slate-900 text-sm mb-0.5">撮影日が変わったら、シート側は手で直す</div>
+        <p class="text-xs text-ads-muted">ロボットは行を勝手に書き換えません（作業中の情報を壊さないため）。⚠通知とメモ欄の⚠が目印</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!--  8. 設定の変え方                                              -->
+<!-- ============================================================ -->
+<section class="mb-14 md:mb-20">
+  <div class="flex items-center gap-3 mb-6">
+    <div class="w-8 h-8 rounded-lg bg-ads-accent/10 flex items-center justify-center">
+      <i data-lucide="sliders-horizontal" class="w-4 h-4 text-ads-accent"></i>
+    </div>
+    <h2 class="text-xl md:text-2xl font-black text-slate-900">設定を変えたいとき ── ぜんぶ「自動追加設定」シート</h2>
+  </div>
+  <p class="text-sm text-ads-muted mb-4">コードを触る必要はありません。シートのタブ「<b class="text-slate-900">自動追加設定</b>」を書き換えれば、<b class="text-slate-900">翌朝から反映</b>されます。</p>
+
+  <div class="grid md:grid-cols-2 gap-3">
+    <div class="bg-ads-surface border border-ads-border rounded-xl p-5">
+      <div class="font-black text-slate-900 text-sm mb-3 flex items-center gap-2"><i data-lucide="table" class="w-4 h-4 text-ads-accent"></i>クライアント表（A〜F列）</div>
+      <ul class="text-xs text-ads-muted space-y-2">
+        <li class="flex gap-2"><span class="text-ads-accent font-bold shrink-0">本数/撮影</span>1回の撮影で作る本数を変える</li>
+        <li class="flex gap-2"><span class="text-ads-accent font-bold shrink-0">投稿曜日</span>「水・日」のように複数OK。決まったら追記</li>
+        <li class="flex gap-2"><span class="text-ads-accent font-bold shrink-0">別名</span>カレンダーでの呼び方を「・」区切りで追加（例：宮川さん）</li>
+        <li class="flex gap-2"><span class="text-ads-accent font-bold shrink-0">行の追加</span>新しいクライアントは1行足すだけで自動化スタート</li>
+      </ul>
+    </div>
+    <div class="bg-ads-surface border border-ads-border rounded-xl p-5">
+      <div class="font-black text-slate-900 text-sm mb-3 flex items-center gap-2"><i data-lucide="wrench" class="w-4 h-4 text-ads-accent"></i>動作設定（H〜I列）</div>
+      <ul class="text-xs text-ads-muted space-y-2">
+        <li class="flex gap-2"><span class="text-ads-accent font-bold shrink-0">リードタイム</span>撮影日から最初の投稿枠までの最短日数（今は14日）</li>
+        <li class="flex gap-2"><span class="text-ads-accent font-bold shrink-0">スキャン範囲</span>過去7日〜未来90日をチェック（変更可）</li>
+        <li class="flex gap-2"><span class="text-ads-accent font-bold shrink-0">Webhook</span>Discord通知の宛先URL。チャンネルを変えたいときはここ</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!--  9. FAQ                                                       -->
+<!-- ============================================================ -->
+<section class="mb-14 md:mb-20">
+  <div class="flex items-center gap-3 mb-6">
+    <div class="w-8 h-8 rounded-lg bg-ads-accent/10 flex items-center justify-center">
+      <i data-lucide="circle-help" class="w-4 h-4 text-ads-accent"></i>
+    </div>
+    <h2 class="text-xl md:text-2xl font-black text-slate-900">よくある質問</h2>
+  </div>
+
+  <div class="flex flex-col gap-2.5">
+    <div class="bg-ads-surface border border-ads-border rounded-xl p-5">
+      <div class="font-bold text-slate-900 text-sm mb-1">Q. 同じ撮影が2回追加されることはない？</div>
+      <p class="text-xs text-ads-muted">A. ありません。処理した予定はIDで「自動追加ログ」シートに記録していて、同じ予定は二度と追加されません。</p>
+    </div>
+    <div class="bg-ads-surface border border-ads-border rounded-xl p-5">
+      <div class="font-bold text-slate-900 text-sm mb-1">Q. DEPで9本撮れた日は？</div>
+      <p class="text-xs text-ads-muted">A. 自動では8本。9本目だけ手動で1行追加してください（多めに作って消す運用より、足りない分を足す方が事故が少ないため）。</p>
+    </div>
+    <div class="bg-ads-surface border border-ads-border rounded-xl p-5">
+      <div class="font-bold text-slate-900 text-sm mb-1">Q. 間違って追加された行はどうする？</div>
+      <p class="text-xs text-ads-muted">A. その行の中身を消すだけでOK。何が追加されたかは「自動追加ログ」に全部残っているので、あとから追跡できます。</p>
+    </div>
+    <div class="bg-ads-surface border border-ads-border rounded-xl p-5">
+      <div class="font-bold text-slate-900 text-sm mb-1">Q. PCの電源を切ってても動く？</div>
+      <p class="text-xs text-ads-muted">A. 動きます。Googleのサーバー上で毎朝6時に実行されるので、ブラウザもPCも関係ありません。</p>
+    </div>
+    <div class="bg-ads-surface border border-ads-border rounded-xl p-5">
+      <div class="font-bold text-slate-900 text-sm mb-1">Q. 動いてるか確認したいときは？</div>
+      <p class="text-xs text-ads-muted">A. 「自動追加ログ」シートを見れば、毎朝の処理結果（追加済／スキップ／⚠）が時系列で全部残っています。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!--  CLOSING                                                     -->
+<!-- ============================================================ -->
+<section>
+  <div class="text-center bg-gradient-to-b from-ads-accent/5 to-transparent border border-ads-accent/10 rounded-xl p-8 md:p-10">
+    <i data-lucide="rocket" class="w-8 h-8 text-ads-accent mx-auto mb-4"></i>
+    <p class="text-lg font-bold text-slate-900 mb-3">まとめ：「カレンダーに入れたら、もう載ってる」</p>
+    <p class="text-ads-muted max-w-lg mx-auto leading-relaxed mb-4">
+      撮影が決まったらカレンダーに1件入れるだけ。行の作成・投稿日の計算・チームへの周知まで、<br class="hidden md:block">
+      毎朝6時のロボットが全部済ませてくれます。人間はタイトルと担当決めに集中！
+    </p>
+    <p class="text-xs text-ads-dim">iMuseLLC 撮影日自動追加のしくみ ・ 2026/07/03 公開</p>
+  </div>
+</section>
+
+  </main>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>lucide.createIcons();</script>
+</body>
+</html>

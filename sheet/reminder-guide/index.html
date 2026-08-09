@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+  <meta name="googlebot" content="noindex, nofollow">
+  <meta property="og:title" content="制作進捗リマインダーのしくみ｜iMuseLLC">
+  <meta property="og:description" content="締切が近いのに始まっていない案件だけ、毎朝Discordに自動でお知らせ。BO・編集者向けの図解ガイドです。">
+  <meta property="og:type" content="article">
+  <title>制作進捗リマインダーのしくみ｜iMuseLLC</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23FFFFFF'/><rect x='8' y='8' width='84' height='84' rx='14' fill='none' stroke='%23F59E0B' stroke-width='4'/><path d='M50 26 v30 M50 68 v4' fill='none' stroke='%23F59E0B' stroke-width='9' stroke-linecap='round'/></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            ads: {
+              bg: '#FFFFFF',
+              surface: '#F8FAFC',
+              hover: '#F1F5F9',
+              border: '#E2E8F0',
+              accent: '#3B82F6',
+              'accent-light': '#2563EB',
+              text: '#1E293B',
+              muted: '#64748B',
+              dim: '#94A3B8',
+              positive: '#10B981',
+              negative: '#EF4444',
+              warning: '#F59E0B',
+            }
+          },
+          fontFamily: {
+            sans: ['"Noto Sans JP"', '"Hiragino Sans"', '"Hiragino Kaku Gothic ProN"', '"Yu Gothic UI"', '"Meiryo"', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @media print {
+      .no-print { display: none !important; }
+      body { border-top: none !important; }
+      .rounded-xl, .rounded-2xl { break-inside: avoid; }
+      .bg-clip-text.text-transparent {
+        -webkit-background-clip: initial !important;
+        background-clip: initial !important;
+        color: #D97706 !important;
+        -webkit-text-fill-color: #D97706 !important;
+      }
+    }
+  </style>
+</head>
+<body class="bg-ads-bg text-slate-600 antialiased leading-relaxed border-t-4 border-ads-warning">
+  <div class="no-print max-w-3xl mx-auto px-5 pt-2 flex justify-end">
+    <button onclick="window.print()" class="flex items-center gap-1.5 text-xs text-ads-dim hover:text-ads-warning transition-colors cursor-pointer">
+      <i data-lucide="download" class="w-3.5 h-3.5"></i>
+      PDF
+    </button>
+  </div>
+  <main class="max-w-3xl mx-auto px-5 py-10 md:py-16">
+
+<!-- ============================================================ -->
+<!--  HERO                                                        -->
+<!-- ============================================================ -->
+<div class="text-center mb-10 md:mb-14">
+  <div class="inline-flex items-center gap-2 bg-ads-warning/10 text-amber-600 px-4 py-1.5 rounded-full text-sm font-medium mb-6">
+    <i data-lucide="alarm-clock" class="w-4 h-4"></i>
+    iMuseLLC ／ 制作進捗リマインダーのしくみ
+  </div>
+  <h1 class="text-3xl md:text-5xl font-black text-slate-900 tracking-tight mb-6">
+    締切前なのに未着手。<br>
+    <span class="bg-gradient-to-r from-amber-500 to-red-500 bg-clip-text text-transparent">それだけ、毎朝お知らせ</span>
+  </h1>
+  <p class="text-lg text-ads-muted max-w-xl mx-auto leading-relaxed">
+    シートの制作締切が近づいているのに、まだ制作が始まっていない案件。<br>
+    <b class="text-slate-900">その案件だけをロボットが毎朝見つけて、Discordで担当者に直接お知らせ</b>します。<br>
+    順調な日は何も届きません。静かな朝＝ぜんぶ順調のサインです。
+  </p>
+</div>
+
+<!-- ============================================================ -->
+<!--  1. 毎朝6時に起こること                                        -->
+<!-- ============================================================ -->
+<section class="mb-14 md:mb-20">
+  <div class="flex items-center gap-3 mb-6">
+    <div class="w-8 h-8 rounded-lg bg-ads-warning/10 flex items-center justify-center">
+      <i data-lucide="sunrise" class="w-4 h-4 text-amber-600"></i>
+    </div>
+    <h2 class="text-xl md:text-2xl font-black text-slate-900">毎朝6時に起こること ── 人は何もしなくてOK</h2>
+  </div>
+
+  <div class="flex flex-col gap-2">
+    <!-- step 1 -->
+    <div class="flex items-start gap-4 bg-ads-surface border border-ads-border rounded-xl p-5">
+      <div class="w-10 h-10 rounded-lg bg-ads-warning/10 flex items-center justify-center shrink-0">
+        <i data-lucide="bot" class="w-5 h-5 text-amber-600"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-2 mb-1">
+          <span class="text-[10px] font-black bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full">自動</span>
+          <span class="font-black text-slate-900">ロボットがマスターシートを全行チェック</span>
+        </div>
+        <p class="text-sm text-ads-muted">見るのは2つだけ。<b class="text-slate-900">ステータス</b>（未着手／タイトル待ちか？）と<b class="text-slate-900">制作締切</b>（明日以前か？）。土日も毎朝動きます。</p>
+      </div>
+    </div>
+    <div class="flex justify-center"><i data-lucide="chevron-down" class="w-5 h-5 text-ads-dim"></i></div>
+    <!-- step 2 -->
+    <div class="flex items-start gap-4 bg-ads-surface border border-ads-border rounded-xl p-5">
+      <div class="w-10 h-10 rounded-lg bg-ads-warning/10 flex items-center justify-center shrink-0">
+        <i data-lucide="filter" class="w-5 h-5 text-amber-600"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-2 mb-1">
+          <span class="text-[10px] font-black bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full">自動</span>
+          <span class="font-black text-slate-900">「締切が明日〜超過」×「まだ始まっていない」案件だけ抽出</span>
+        </div>
+        <p class="text-sm text-ads-muted">編集中・サムネ待ちなど、動いている案件には何も送りません。該当ゼロの日は通知そのものが来ません。</p>
+      </div>
+    </div>
+    <div class="flex justify-center"><i data-lucide="chevron-down" class="w-5 h-5 text-ads-dim"></i></div>
+    <!-- step 3 -->
+    <div class="flex items-start gap-4 bg-white border-2 border-ads-warning rounded-xl p-5">
+      <div class="w-10 h-10 rounded-lg bg-ads-warning/10 flex items-center justify-center shrink-0">
+        <i data-lucide="message-circle" class="w-5 h-5 text-amber-600"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-2 mb-1">
+          <span class="text-[10px] font-black bg-ads-warning text-white px-2 py-0.5 rounded-full">通知</span>
+          <span class="font-black text-slate-900">Discordの専用チャンネルに、担当者を名指しでお知らせ</span>
+        </div>
+        <p class="text-sm text-ads-muted">担当の編集者に<b class="text-slate-900">@メンション</b>、さらに毎回<b class="text-slate-900">@BACKOFFICE</b>にも通知。BOも全件把握できるので「誰も気づかなかった」が起きません。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!--  2. 通知の3段階                                               -->
+<!-- ============================================================ -->
+<section class="mb-14 md:mb-20">
+  <div class="flex items-center gap-3 mb-6">
+    <div class="w-8 h-8 rounded-lg bg-ads-warning/10 flex items-center justify-center">
+      <i data-lucide="gauge" class="w-4 h-4 text-amber-600"></i>
+    </div>
+    <h2 class="text-xl md:text-2xl font-black text-slate-900">通知は3段階 ── 締切が近づくほど強くなる</h2>
+  </div>
+
+  <div class="grid md:grid-cols-3 gap-3 mb-4">
+    <!-- 前日 -->
+    <div class="bg-amber-50 border-2 border-amber-300 rounded-xl p-5">
+      <div class="flex items-center gap-2 mb-2">
+        <span class="text-2xl">⚠</span>
+        <span class="font-black text-amber-700">明日締切</span>
+      </div>
+      <div class="text-xs font-bold text-amber-600 mb-2">締切の前日</div>
+      <p class="text-sm text-slate-600">「明日が制作締切ですが、まだ未着手です」という最初のお知らせ。ここで着手できれば何の問題もありません。</p>
+    </div>
+    <!-- 当日 -->
+    <div class="bg-red-50 border-2 border-red-300 rounded-xl p-5">
+      <div class="flex items-center gap-2 mb-2">
+        <span class="text-2xl">🚨</span>
+        <span class="font-black text-red-600">本日締切</span>
+      </div>
+      <div class="text-xs font-bold text-red-500 mb-2">締切の当日</div>
+      <p class="text-sm text-slate-600">「今日が締切です」の強めのお知らせ。今日中に着手するか、難しければBOに相談を。</p>
+    </div>
+    <!-- 超過 -->
+    <div class="bg-red-100 border-2 border-red-500 rounded-xl p-5">
+      <div class="flex items-center gap-2 mb-2">
+        <span class="text-2xl">🔥</span>
+        <span class="font-black text-red-700">締切超過</span>
+      </div>
+      <div class="text-xs font-bold text-red-600 mb-2">締切を過ぎたあと・毎朝</div>
+      <p class="text-sm text-slate-600">「◯日超過」の表示付きで、<b class="text-slate-900">着手されるまで毎朝届き続けます</b>。見逃しても翌朝また来るので、拾い損ねゼロ。</p>
+    </div>
+  </div>
+
+  <div class="flex items-start gap-3 bg-ads-surface border border-ads-border rounded-xl p-4">
+    <i data-lucide="lightbulb" class="w-5 h-5 text-amber-500 shrink-0 mt-0.5"></i>
+    <p class="text-sm text-ads-muted"><b class="text-slate-900">通知を止める方法はただ1つ、「着手すること」。</b>ステータスが進めば翌朝から自動で止まります。逆に言うと、返信やリアクションでは止まりません（それでOK。シートが唯一の真実です）。</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!--  3. 誰に届く？                                                -->
+<!-- ============================================================ -->
+<section class="mb-14 md:mb-20">
+  <div class="flex items-center gap-3 mb-6">
+    <div class="w-8 h-8 rounded-lg bg-ads-warning/10 flex items-center justify-center">
+      <i data-lucide="at-sign" class="w-4 h-4 text-amber-600"></i>
+    </div>
+    <h2 class="text-xl md:text-2xl font-black text-slate-900">誰に届く？ ── ステータスで宛先が変わる</h2>
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-3 mb-3">
+    <!-- 未着手 -->
+    <div class="bg-white border border-ads-border rounded-xl p-5">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="text-[11px] font-black bg-violet-100 text-violet-700 px-2.5 py-1 rounded-full">ステータス：未着手</span>
+        <i data-lucide="arrow-right" class="w-4 h-4 text-ads-dim"></i>
+        <span class="text-[11px] font-black bg-blue-100 text-blue-700 px-2.5 py-1 rounded-full">編集者に@名指し</span>
+      </div>
+      <p class="text-sm text-ads-muted mb-3">シートの<b class="text-slate-900">制作担当</b>欄に書かれている編集者へ、直接@メンションが飛びます。</p>
+      <div class="bg-ads-surface rounded-lg p-3 text-xs text-ads-muted">
+        <div class="flex items-center gap-2 mb-1"><i data-lucide="users" class="w-3.5 h-3.5 text-blue-500"></i><b class="text-slate-900">担当が「GS」の案件は？</b></div>
+        田中さん・舟瀬さんの<b class="text-slate-900">2人ともに@メンション</b>されます。
+      </div>
+    </div>
+    <!-- タイトル待ち -->
+    <div class="bg-white border border-ads-border rounded-xl p-5">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="text-[11px] font-black bg-slate-200 text-slate-600 px-2.5 py-1 rounded-full">ステータス：タイトル待ち</span>
+        <i data-lucide="arrow-right" class="w-4 h-4 text-ads-dim"></i>
+        <span class="text-[11px] font-black bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-full">BO宛て</span>
+      </div>
+      <p class="text-sm text-ads-muted mb-3">タイトルが決まらないと編集も始められないので、こちらは<b class="text-slate-900">「タイトル確定を急いで」というBO向けの文面</b>で届きます。編集者は何もしなくてOK。</p>
+      <div class="bg-ads-surface rounded-lg p-3 text-xs text-ads-muted">
+        <div class="flex items-center gap-2 mb-1"><i data-lucide="shield-check" class="w-3.5 h-3.5 text-emerald-500"></i><b class="text-slate-900">BOの見落とし防止</b></div>
+        すべての通知の冒頭に<b class="text-slate-900">@BACKOFFICE</b>が付くので、BOは全件を把握できます。
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!--  4. 実際の通知イメージ                                         -->
+<!-- ============================================================ -->
+<section class="mb-14 md:mb-20">
+  <div class="flex items-center gap-3 mb-6">
+    <div class="w-8 h-8 rounded-lg bg-ads-warning/10 flex items-center justify-center">
+      <i data-lucide="message-square-text" class="w-4 h-4 text-amber-600"></i>
+    </div>
+    <h2 class="text-xl md:text-2xl font-black text-slate-900">実際の通知はこんな見た目</h2>
+  </div>
+
+  <!-- Discord mock -->
+  <div class="rounded-2xl overflow-hidden border border-slate-700 shadow-lg">
+    <div class="bg-[#1E1F22] px-4 py-2.5 flex items-center gap-2">
+      <span class="text-slate-400 text-lg font-bold">#</span>
+      <span class="text-slate-200 text-sm font-bold">進捗リマインド</span>
+    </div>
+    <div class="bg-[#313338] p-4 md:p-5">
+      <div class="flex items-start gap-3">
+        <div class="w-10 h-10 rounded-full bg-amber-400 flex items-center justify-center text-xl shrink-0">🐱</div>
+        <div class="min-w-0">
+          <div class="flex items-baseline gap-2 mb-1">
+            <span class="text-amber-300 font-bold text-sm">リマインド猫</span>
+            <span class="bg-indigo-500 text-white text-[9px] font-bold px-1 rounded">BOT</span>
+            <span class="text-slate-400 text-[11px]">今日 06:00</span>
+          </div>
+          <div class="text-slate-200 text-[13px] leading-relaxed space-y-1 break-words">
+            <div><span class="bg-indigo-500/40 text-indigo-200 rounded px-1 font-medium">@BACKOFFICE</span></div>
+            <div>📢 <b class="text-white">制作進捗リマインダー</b>（8/2 06:00）</div>
+            <div>🔗 シートを開く → <span class="text-blue-400 underline">https://docs.google.com/...</span></div>
+            <div class="pt-1">🔥 <span class="bg-indigo-500/40 text-indigo-200 rounded px-1 font-medium">@ゆうさく</span> 【DEP_m】7/20撮影 ② — 制作締切 7/30（3日超過）でまだ未着手です。進捗どうですか？</div>
+            <div>🚨 <span class="bg-indigo-500/40 text-indigo-200 rounded px-1 font-medium">@田中ゆか里</span> <span class="bg-indigo-500/40 text-indigo-200 rounded px-1 font-medium">@舟瀬 渚</span> 【mug_m】キャンプ道具10選 — 制作締切 本日 8/2 でまだ未着手です。進捗どうですか？</div>
+            <div>⚠ <span class="bg-indigo-500/40 text-indigo-200 rounded px-1 font-medium">@ゆき</span> 【そうぞう_m】8/1撮影 ① — 制作締切 明日 8/3 でまだ未着手です。進捗どうですか？</div>
+            <div>⚠ 増田さん 【角川春樹】8/1撮影 ③ — 制作締切 明日 8/3 なのにタイトルが未確定です。確定を急いでください！</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid md:grid-cols-3 gap-3 mt-4">
+    <div class="bg-ads-surface border border-ads-border rounded-xl p-4">
+      <div class="flex items-center gap-2 mb-1"><i data-lucide="arrow-down-wide-narrow" class="w-4 h-4 text-amber-600"></i><b class="text-slate-900 text-sm">深刻な順に並ぶ</b></div>
+      <p class="text-xs text-ads-muted">🔥超過 → 🚨本日 → ⚠明日 の順。一番上から対処すればOK。</p>
+    </div>
+    <div class="bg-ads-surface border border-ads-border rounded-xl p-4">
+      <div class="flex items-center gap-2 mb-1"><i data-lucide="link" class="w-4 h-4 text-amber-600"></i><b class="text-slate-900 text-sm">シートへ1タップ</b></div>
+      <p class="text-xs text-ads-muted">冒頭のリンクからすぐマスターを開いて確認・更新できます。</p>
+    </div>
+    <div class="bg-ads-surface border border-ads-border rounded-xl p-4">
+      <div class="flex items-center gap-2 mb-1"><i data-lucide="volume-x" class="w-4 h-4 text-amber-600"></i><b class="text-slate-900 text-sm">来ない日は順調</b></div>
+      <p class="text-xs text-ads-muted">該当ゼロの日は1通も届きません。静かな朝は良い朝。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!--  5. 通知が来たらやること                                       -->
+<!-- ============================================================ -->
+<section class="mb-14 md:mb-20">
+  <div class="flex items-center gap-3 mb-6">
+    <div class="w-8 h-8 rounded-lg bg-ads-warning/10 flex items-center justify-center">
+      <i data-lucide="list-checks" class="w-4 h-4 text-amber-600"></i>
+    </div>
+    <h2 class="text-xl md:text-2xl font-black text-slate-900">自分に@が来たらやること ── たった2つ</h2>
+  </div>
+
+  <div class="flex flex-col gap-2">
+    <div class="flex items-start gap-4 bg-white border-2 border-ads-accent rounded-xl p-5">
+      <div class="w-9 h-9 rounded-full bg-ads-accent text-white font-black flex items-center justify-center shrink-0">1</div>
+      <div>
+        <div class="font-black text-slate-900 mb-1">制作に着手する</div>
+        <p class="text-sm text-ads-muted">通知の【クライアント】タイトルの案件です。着手したら、シートの<b class="text-slate-900">ステータスを「編集中」に変更</b>。これだけで翌朝から通知は止まります。</p>
+      </div>
+    </div>
+    <div class="flex items-start gap-4 bg-white border border-ads-border rounded-xl p-5">
+      <div class="w-9 h-9 rounded-full bg-slate-300 text-white font-black flex items-center justify-center shrink-0">2</div>
+      <div>
+        <div class="font-black text-slate-900 mb-1">すぐ着手できないなら、BOに一言相談</div>
+        <p class="text-sm text-ads-muted">素材が足りない・他案件が詰まっている等、着手できない理由があるときは放置せずBOへ。スケジュール調整はBOの仕事です。通知に気づいたリアクション（👍など）をもらえると、BOも安心です。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4 mt-3">
+    <i data-lucide="heart-handshake" class="w-5 h-5 text-amber-500 shrink-0 mt-0.5"></i>
+    <p class="text-sm text-slate-600"><b class="text-slate-900">このリマインダーは「催促」ではなく「見落とし防止」です。</b>忙しいと締切は誰でも見落とします。責める仕組みではなく、「ヤバくなる前に気づける」ための安全網として使ってください。</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!--  6. FAQ                                                      -->
+<!-- ============================================================ -->
+<section class="mb-14 md:mb-20">
+  <div class="flex items-center gap-3 mb-6">
+    <div class="w-8 h-8 rounded-lg bg-ads-warning/10 flex items-center justify-center">
+      <i data-lucide="circle-help" class="w-4 h-4 text-amber-600"></i>
+    </div>
+    <h2 class="text-xl md:text-2xl font-black text-slate-900">よくある質問</h2>
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-3">
+    <div class="bg-ads-surface border border-ads-border rounded-xl p-5">
+      <div class="font-bold text-slate-900 text-sm mb-1">Q. 編集中の案件にも通知が来る？</div>
+      <p class="text-xs text-ads-muted">A. 来ません。対象は「未着手」と「タイトル待ち」だけ。動いている案件には一切通知しません。</p>
+    </div>
+    <div class="bg-ads-surface border border-ads-border rounded-xl p-5">
+      <div class="font-bold text-slate-900 text-sm mb-1">Q. 土日や祝日も届く？</div>
+      <p class="text-xs text-ads-muted">A. 届きます。毎朝6時、365日動いています。土日をはさむ締切も同じルールでカウントします。</p>
+    </div>
+    <div class="bg-ads-surface border border-ads-border rounded-xl p-5">
+      <div class="font-bold text-slate-900 text-sm mb-1">Q. @メンションじゃなく名前だけで届く人がいる</div>
+      <p class="text-xs text-ads-muted">A. 「自動追加設定」シートの対応表（メンバー名⇔Discord ID）に登録がない人です。BOに言ってもらえれば1分で追加できます。</p>
+    </div>
+    <div class="bg-ads-surface border border-ads-border rounded-xl p-5">
+      <div class="font-bold text-slate-900 text-sm mb-1">Q. ステータスを更新したのに通知が来た</div>
+      <p class="text-xs text-ads-muted">A. チェックは朝6時時点のシートを見ています。6時より後に更新した場合、その日の通知には反映済みではないことがあります。翌朝からは止まります。</p>
+    </div>
+    <div class="bg-ads-surface border border-ads-border rounded-xl p-5">
+      <div class="font-bold text-slate-900 text-sm mb-1">Q. 担当者の変更・通知先の設定はどこ？（BO向け）</div>
+      <p class="text-xs text-ads-muted">A. スプシの「自動追加設定」シートです。H列に通知の動作設定（Webhook・BOロール・超過上限30日）、K:L列にメンバー名⇔Discord IDの対応表があります。</p>
+    </div>
+    <div class="bg-ads-surface border border-ads-border rounded-xl p-5">
+      <div class="font-bold text-slate-900 text-sm mb-1">Q. ずっと放置したらどうなる？</div>
+      <p class="text-xs text-ads-muted">A. 超過30日まで毎朝通知が続きます（それ以降は自動停止）。そこまで行く前にBOが動きます！</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!--  CLOSING                                                     -->
+<!-- ============================================================ -->
+<section>
+  <div class="text-center bg-gradient-to-b from-ads-warning/5 to-transparent border border-ads-warning/10 rounded-xl p-8 md:p-10">
+    <i data-lucide="shield-check" class="w-8 h-8 text-amber-500 mx-auto mb-4"></i>
+    <p class="text-lg font-bold text-slate-900 mb-3">まとめ：「気づかなかった」をゼロにする安全網</p>
+    <p class="text-ads-muted max-w-lg mx-auto leading-relaxed mb-4">
+      締切前なのに始まっていない案件だけを、毎朝ロボットが名指しでお知らせ。<br class="hidden md:block">
+      編集者は着手してステータスを進めるだけ、BOは@BACKOFFICEで全件見えるだけ。<br class="hidden md:block">
+      通知が来ない朝は、チーム全体が順調な証拠です。
+    </p>
+    <p class="text-xs text-ads-dim">iMuseLLC 制作進捗リマインダーのしくみ ・ 2026/08/02 公開</p>
+  </div>
+</section>
+
+  </main>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>lucide.createIcons();</script>
+</body>
+</html>

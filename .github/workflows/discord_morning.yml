@@ -36,7 +36,7 @@ jobs:
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r dashboard/requirements.txt
 
       - name: Run Discord notification
         env:
@@ -56,4 +56,4 @@ jobs:
           # ヘッダー検証や WORKSHEET_GID 不一致時の振る舞いは本番と同じ
           FALLBACK_TO_SAMPLE_ON_ERROR: "False"
           FALLBACK_TO_FIRST_SHEET: "False"
-        run: python scripts/discord_notify.py
+        run: python dashboard/scripts/discord_notify.py

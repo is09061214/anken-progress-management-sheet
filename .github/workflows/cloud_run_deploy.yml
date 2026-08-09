@@ -9,9 +9,9 @@ on:
   push:
     branches: [main]
     paths:
-      - "app/**"
-      - "Dockerfile"
-      - "requirements.txt"
+      - "dashboard/app/**"
+      - "dashboard/Dockerfile"
+      - "dashboard/requirements.txt"
       - ".github/workflows/cloud_run_deploy.yml"
   workflow_dispatch: {}
 
@@ -35,7 +35,7 @@ jobs:
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy youtube-progress-dashboard \
-            --source . \
+            --source dashboard \
             --region asia-northeast1 \
             --project "${{ secrets.GCP_PROJECT_ID }}" \
             --quiet

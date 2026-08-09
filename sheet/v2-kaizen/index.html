@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+  <meta name="googlebot" content="noindex, nofollow">
+  <meta property="og:title" content="案件進捗管理シート 改良ポイントまとめ（試作版V2）｜iMuseLLC">
+  <meta property="og:description" content="チェックボックス自動判定から手動ステータス方式へ。何がどう変わったかを図解でまとめました。">
+  <meta property="og:type" content="article">
+  <title>案件進捗管理シート 改良ポイントまとめ（試作版V2）｜iMuseLLC</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23FFFFFF'/><rect x='8' y='8' width='84' height='84' rx='14' fill='none' stroke='%233B82F6' stroke-width='4'/><path d='M30 55 L45 70 L72 35' fill='none' stroke='%233B82F6' stroke-width='8' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            ads: {
+              bg: '#FFFFFF',
+              surface: '#F8FAFC',
+              hover: '#F1F5F9',
+              border: '#E2E8F0',
+              accent: '#3B82F6',
+              'accent-light': '#2563EB',
+              text: '#1E293B',
+              muted: '#64748B',
+              dim: '#94A3B8',
+              positive: '#10B981',
+              negative: '#EF4444',
+              warning: '#F59E0B',
+            }
+          },
+          fontFamily: {
+            sans: ['"Noto Sans JP"', '"Hiragino Sans"', '"Hiragino Kaku Gothic ProN"', '"Yu Gothic UI"', '"Meiryo"', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @media print {
+      .no-print { display: none !important; }
+      body { border-top: none !important; }
+      .rounded-xl, .rounded-2xl { break-inside: avoid; }
+      .bg-clip-text.text-transparent {
+        -webkit-background-clip: initial !important;
+        background-clip: initial !important;
+        color: #2563EB !important;
+        -webkit-text-fill-color: #2563EB !important;
+      }
+    }
+  </style>
+</head>
+<body class="bg-ads-bg text-slate-600 antialiased leading-relaxed border-t-4 border-ads-accent">
+  <div class="no-print max-w-3xl mx-auto px-5 pt-2 flex justify-end">
+    <button onclick="window.print()" class="flex items-center gap-1.5 text-xs text-ads-dim hover:text-ads-accent transition-colors cursor-pointer">
+      <i data-lucide="download" class="w-3.5 h-3.5"></i>
+      PDF
+    </button>
+  </div>
+  <main class="max-w-3xl mx-auto px-5 py-10 md:py-16">
+
+<!-- ============================================================ -->
+<!--  HERO                                                        -->
+<!-- ============================================================ -->
+<div class="text-center mb-10 md:mb-14">
+  <div class="inline-flex items-center gap-2 bg-ads-accent/10 text-ads-accent-light px-4 py-1.5 rounded-full text-sm font-medium mb-6">
+    <i data-lucide="sparkles" class="w-4 h-4"></i>
+    iMuseLLC ／ 試作版V2 改良まとめ
+  </div>
+  <h1 class="text-3xl md:text-5xl font-black text-slate-900 tracking-tight mb-6">
+    案件進捗管理シート、<br>
+    <span class="bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">こう変わりました</span>
+  </h1>
+  <p class="text-lg text-ads-muted max-w-xl mx-auto leading-relaxed">
+    BOのお二人の「青ばっかりで、いま誰がボールを持ってるか分からない」という声からスタートした大改修。<br>
+    変わったポイントを、ぜんぶ図解でまとめました。
+  </p>
+</div>
+
+<!-- ============================================================ -->
+<!--  0. TIMELINE                                                 -->
+<!-- ============================================================ -->
+<section class="mb-14 md:mb-20">
+  <div class="flex items-center gap-3 mb-6">
+    <div class="w-8 h-8 rounded-lg bg-ads-accent/10 flex items-center justify-center">
+      <i data-lucide="git-branch" class="w-4 h-4 text-ads-accent"></i>
+    </div>
+    <h2 class="text-xl md:text-2xl font-black text-slate-900">まず全体の流れ ── いま「3代目」の試作中</h2>
+  </div>
+
+  <div class="flex flex-col md:flex-row items-stretch gap-2 md:gap-0">
+    <!-- old -->
+    <div class="flex-1 bg-ads-surface border border-ads-border rounded-xl p-5">
+      <div class="text-[11px] font-bold text-ads-dim mb-2">〜2026/6</div>
+      <div class="flex items-center gap-2 mb-2">
+        <i data-lucide="archive" class="w-5 h-5 text-slate-400"></i>
+        <div class="font-black text-slate-700 text-sm">旧シート</div>
+      </div>
+      <p class="text-xs text-ads-muted leading-relaxed">日付180列のガント付き。行の追加が大変で、ガントは「ほぼ見てない」状態に。</p>
+      <div class="mt-3 inline-flex items-center gap-1 text-[10px] text-slate-500 bg-slate-100 rounded-full px-2 py-0.5">現在はアーカイブ</div>
+    </div>
+    <div class="flex items-center justify-center md:w-8 py-1 md:py-0">
+      <i data-lucide="arrow-right" class="w-4 h-4 text-ads-dim hidden md:block"></i>
+      <i data-lucide="arrow-down" class="w-4 h-4 text-ads-dim md:hidden"></i>
+    </div>
+    <!-- current -->
+    <div class="flex-1 bg-ads-surface border border-ads-border rounded-xl p-5">
+      <div class="text-[11px] font-bold text-ads-dim mb-2">2026/6/27〜</div>
+      <div class="flex items-center gap-2 mb-2">
+        <i data-lucide="table" class="w-5 h-5 text-blue-500"></i>
+        <div class="font-black text-slate-700 text-sm">本番シート（新）</div>
+      </div>
+      <p class="text-xs text-ads-muted leading-relaxed">1行=1動画。締切の自動逆算＋工程ごとのチェック✓で進捗を自動判定する方式。</p>
+      <div class="mt-3 inline-flex items-center gap-1 text-[10px] text-blue-700 bg-blue-500/10 rounded-full px-2 py-0.5">いま運用中</div>
+    </div>
+    <div class="flex items-center justify-center md:w-8 py-1 md:py-0">
+      <i data-lucide="arrow-right" class="w-4 h-4 text-ads-dim hidden md:block"></i>
+      <i data-lucide="arrow-down" class="w-4 h-4 text-ads-dim md:hidden"></i>
+    </div>
+    <!-- proto -->
+    <div class="flex-1 bg-gradient-to-b from-blue-50 to-white border-2 border-ads-accent/40 rounded-xl p-5 relative">
+      <div class="absolute -top-2.5 left-4 bg-ads-accent text-white text-[10px] font-bold px-2 py-0.5 rounded-full">★ このページの主役</div>
+      <div class="text-[11px] font-bold text-ads-dim mb-2 mt-1">2026/7/2〜</div>
+      <div class="flex items-center gap-2 mb-2">
+        <i data-lucide="flask-conical" class="w-5 h-5 text-ads-accent"></i>
+        <div class="font-black text-slate-900 text-sm">試作版V2</div>
+      </div>
+      <p class="text-xs text-ads-muted leading-relaxed">本番の複製に改修を全部載せた検証用。BOレビューでOKが出たら本番へ反映。</p>
+      <div class="mt-3 inline-flex items-center gap-1 text-[10px] text-ads-accent-light bg-ads-accent/10 rounded-full px-2 py-0.5">レビュー待ち</div>
+    </div>
+  </div>
+
+  <div class="mt-4 flex items-start gap-2 text-xs text-ads-muted bg-ads-surface border border-ads-border rounded-lg p-3">
+    <i data-lucide="shield-check" class="w-4 h-4 text-emerald-500 shrink-0 mt-0.5"></i>
+    <span>改修はぜんぶ<b class="text-slate-700">複製（試作版）の上だけ</b>でやっています。本番シートは無傷なので、安心して試せます。</span>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!--  1. TRIGGER                                                  -->
+<!-- ============================================================ -->
+<section class="mb-14 md:mb-20">
+  <div class="flex items-center gap-3 mb-6">
+    <div class="w-8 h-8 rounded-lg bg-ads-accent/10 flex items-center justify-center">
+      <i data-lucide="message-circle" class="w-4 h-4 text-ads-accent"></i>
+    </div>
+    <h2 class="text-xl md:text-2xl font-black text-slate-900">きっかけは、BOのお二人の声</h2>
+  </div>
+
+  <div class="bg-ads-surface border border-ads-border rounded-2xl p-6 md:p-8">
+    <div class="flex flex-col md:flex-row gap-4 mb-6">
+      <div class="flex-1 bg-white border border-ads-border rounded-xl p-4 relative">
+        <i data-lucide="quote" class="w-4 h-4 text-ads-dim absolute top-3 right-3"></i>
+        <p class="text-sm font-bold text-slate-800 leading-relaxed">「信号が青ばっかりで、<br>結局どれから手を付ければいいの？」</p>
+      </div>
+      <div class="flex-1 bg-white border border-ads-border rounded-xl p-4 relative">
+        <i data-lucide="quote" class="w-4 h-4 text-ads-dim absolute top-3 right-3"></i>
+        <p class="text-sm font-bold text-slate-800 leading-relaxed">「いま<b>誰がボールを持ってるのか</b>、パッと見で分からない」</p>
+      </div>
+    </div>
+
+    <div class="text-center">
+      <i data-lucide="arrow-down" class="w-5 h-5 text-ads-dim mx-auto mb-3"></i>
+      <p class="text-sm text-ads-muted mb-4">そこで、情報を<b class="text-slate-800">2つの軸にきっぱり分ける</b>ことにしました</p>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg mx-auto">
+        <div class="bg-white border border-ads-border rounded-xl p-4 text-left">
+          <div class="flex items-center gap-2 mb-1.5">
+            <i data-lucide="hand" class="w-4 h-4 text-violet-500"></i>
+            <div class="font-black text-slate-900 text-sm">ボールの所在</div>
+          </div>
+          <p class="text-xs text-ads-muted">＝ ステータスの<b>チップ色</b>で見る<br>（誰の番か）</p>
+        </div>
+        <div class="bg-white border border-ads-border rounded-xl p-4 text-left">
+          <div class="flex items-center gap-2 mb-1.5">
+            <i data-lucide="siren" class="w-4 h-4 text-red-500"></i>
+            <div class="font-black text-slate-900 text-sm">緊急度</div>
+          </div>
+          <p class="text-xs text-ads-muted">＝ <b>🚦信号列</b>とダッシュボードで見る<br>（急ぎかどうか）</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!--  2. MANUAL STATUS                                            -->
+<!-- ============================================================ -->
+<section class="mb-14 md:mb-20">
+  <div class="flex items-center gap-3 mb-2">
+    <div class="w-8 h-8 rounded-lg bg-ads-accent/10 flex items-center justify-center">
+      <span class="text-ads-accent font-black text-sm">1</span>
+    </div>
+    <h2 class="text-xl md:text-2xl font-black text-slate-900">いちばん大きな変更：ステータスは「手動」に</h2>
+  </div>
+  <p class="text-sm text-ads-muted mb-6 ml-11">チェックボックスからの自動判定をやめて、旧シートで使い慣れた11ステータスをBOがプルダウンで更新する方式に戻しました。</p>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+    <!-- BEFORE -->
+    <div class="bg-ads-surface border border-ads-border rounded-2xl p-5">
+      <div class="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-500 bg-slate-200/70 rounded-full px-2.5 py-1 mb-4">
+        <i data-lucide="history" class="w-3 h-3"></i> BEFORE ── 自動判定方式
+      </div>
+      <div class="space-y-2 mb-4">
+        <div class="flex items-center gap-2 bg-white border border-ads-border rounded-lg px-3 py-2">
+          <div class="w-4 h-4 border-2 border-slate-300 rounded-sm shrink-0 flex items-center justify-center"><i data-lucide="check" class="w-3 h-3 text-slate-400"></i></div>
+          <span class="text-xs text-slate-600">着手✓・制作✓・サムネ✓・CL提出✓…と<b>チェック6個</b>を順番にON</span>
+        </div>
+        <div class="flex items-center gap-2 bg-white border border-ads-border rounded-lg px-3 py-2">
+          <i data-lucide="function-square" class="w-4 h-4 text-slate-400 shrink-0"></i>
+          <span class="text-xs text-slate-600">ステータスは数式が自動で算出</span>
+        </div>
+      </div>
+      <div class="flex items-start gap-2 text-xs text-amber-800 bg-amber-500/10 border border-amber-500/20 rounded-lg p-2.5">
+        <i data-lucide="triangle-alert" class="w-3.5 h-3.5 shrink-0 mt-0.5"></i>
+        <span>実際の現場の11ステータスを自動で再現するのはムリがあった（修正の往復、確認待ちの種類…）</span>
+      </div>
+    </div>
+    <!-- AFTER -->
+    <div class="bg-gradient-to-b from-blue-50 to-white border-2 border-ads-accent/40 rounded-2xl p-5">
+      <div class="inline-flex items-center gap-1.5 text-[11px] font-bold text-white bg-ads-accent rounded-full px-2.5 py-1 mb-4">
+        <i data-lucide="sparkles" class="w-3 h-3"></i> AFTER ── 手動ステータス方式
+      </div>
+      <div class="space-y-2 mb-4">
+        <div class="flex items-center gap-2 bg-white border border-ads-border rounded-lg px-3 py-2">
+          <i data-lucide="chevron-down-square" class="w-4 h-4 text-ads-accent shrink-0"></i>
+          <span class="text-xs text-slate-700">BOが<b>プルダウン1つ</b>でステータスを更新（チェック列は廃止）</span>
+        </div>
+        <div class="flex items-center gap-2 bg-white border border-ads-border rounded-lg px-3 py-2">
+          <i data-lucide="alarm-clock" class="w-4 h-4 text-ads-accent shrink-0"></i>
+          <span class="text-xs text-slate-700">締切までに更新がなければ<b>🔴で「更新忘れ」を検知</b></span>
+        </div>
+      </div>
+      <div class="flex items-start gap-2 text-xs text-emerald-800 bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-2.5">
+        <i data-lucide="thumbs-up" class="w-3.5 h-3.5 shrink-0 mt-0.5"></i>
+        <span>旧シートの語彙そのままなので、<b>BOは覚え直しゼロ</b>で移行できる</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- status flow -->
+  <div class="bg-ads-surface border border-ads-border rounded-2xl p-5 md:p-6">
+    <div class="text-xs font-bold text-slate-700 mb-4 flex items-center gap-1.5">
+      <i data-lucide="route" class="w-3.5 h-3.5 text-ads-accent"></i>
+      11ステータスとチップ色（＝ボールの所在）
+    </div>
+    <div class="flex flex-wrap items-center gap-y-2 gap-x-1 text-[11px] font-bold mb-4">
+      <span class="px-2.5 py-1 rounded-full bg-violet-100 text-violet-800 border border-violet-200">タイトル待ち</span>
+      <i data-lucide="chevron-right" class="w-3 h-3 text-ads-dim"></i>
+      <span class="px-2.5 py-1 rounded-full bg-violet-100 text-violet-800 border border-violet-200">未着手</span>
+      <i data-lucide="chevron-right" class="w-3 h-3 text-ads-dim"></i>
+      <span class="px-2.5 py-1 rounded-full bg-sky-100 text-sky-800 border border-sky-200">編集中</span>
+      <i data-lucide="chevron-right" class="w-3 h-3 text-ads-dim"></i>
+      <span class="px-2.5 py-1 rounded-full bg-sky-100 text-sky-800 border border-sky-200">サムネ待ち</span>
+      <i data-lucide="chevron-right" class="w-3 h-3 text-ads-dim"></i>
+      <span class="px-2.5 py-1 rounded-full bg-rose-100 text-rose-800 border border-rose-200">砂田確認中</span>
+      <i data-lucide="chevron-right" class="w-3 h-3 text-ads-dim"></i>
+      <span class="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">クライアント共有待ち</span>
+      <i data-lucide="chevron-right" class="w-3 h-3 text-ads-dim"></i>
+      <span class="px-2.5 py-1 rounded-full bg-indigo-600 text-white border border-indigo-700">CL確認中</span>
+      <i data-lucide="chevron-right" class="w-3 h-3 text-ads-dim"></i>
+      <span class="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">アップロード待ち</span>
+      <i data-lucide="chevron-right" class="w-3 h-3 text-ads-dim"></i>
+      <span class="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">リンク共有待ち</span>
+      <i data-lucide="chevron-right" class="w-3 h-3 text-ads-dim"></i>
+      <span class="px-2.5 py-1 rounded-full bg-red-700 text-white border border-red-800">完了</span>
+    </div>
+    <div class="flex items-center gap-2 text-[11px] text-ads-muted mb-4">
+      <span class="px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-200 font-bold">修正中</span>
+      <span>… CL確認で修正依頼が来たらここへ。直したら「CL確認中」に戻る往復ルート</span>
+    </div>
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px]">
+      <div class="flex items-center gap-1.5 bg-white border border-ads-border rounded-lg px-2 py-1.5"><span class="w-2.5 h-2.5 rounded-full bg-violet-400 shrink-0"></span><span class="text-slate-600">紫＝これから（未着手系）</span></div>
+      <div class="flex items-center gap-1.5 bg-white border border-ads-border rounded-lg px-2 py-1.5"><span class="w-2.5 h-2.5 rounded-full bg-sky-400 shrink-0"></span><span class="text-slate-600">水色＝制作チームの番</span></div>
+      <div class="flex items-center gap-1.5 bg-white border border-ads-border rounded-lg px-2 py-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-400 shrink-0"></span><span class="text-slate-600">緑＝BOの番</span></div>
+      <div class="flex items-center gap-1.5 bg-white border border-ads-border rounded-lg px-2 py-1.5"><span class="w-2.5 h-2.5 rounded-full bg-indigo-600 shrink-0"></span><span class="text-slate-600">紺＝クライアント待ち</span></div>
+    </div>
+    <p class="text-[11px] text-ads-dim mt-3">※ 完了した行は、シート上で行ごとグレーになって「もう見なくていい」が一目で分かります。</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!--  3. SIGNAL                                                   -->
+<!-- ============================================================ -->
+<section class="mb-14 md:mb-20">
+  <div class="flex items-center gap-3 mb-2">
+    <div class="w-8 h-8 rounded-lg bg-ads-accent/10 flex items-center justify-center">
+      <span class="text-ads-accent font-black text-sm">2</span>
+    </div>
+    <h2 class="text-xl md:text-2xl font-black text-slate-900">🚦信号は「更新忘れセンサー」に進化</h2>
+  </div>
+  <p class="text-sm text-ads-muted mb-6 ml-11">ステータスが手動になった分、「更新をサボると赤くなる」仕組みで安全網を張っています。判定はぜんぶ自動です。</p>
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+    <div class="bg-white border-l-4 border-red-500 border border-ads-border rounded-xl p-4">
+      <div class="flex items-center gap-2 mb-1">
+        <span class="text-lg">🔴</span>
+        <span class="font-black text-slate-900 text-sm">いますぐ確認</span>
+      </div>
+      <p class="text-xs text-ads-muted leading-relaxed">公開まで<b>2日以内</b>、または<b>いまのステータスの締切を超過</b>（＝進んでいないか、更新を忘れている）</p>
+    </div>
+    <div class="bg-white border-l-4 border-amber-400 border border-ads-border rounded-xl p-4">
+      <div class="flex items-center gap-2 mb-1">
+        <span class="text-lg">🟡</span>
+        <span class="font-black text-slate-900 text-sm">もうすぐ</span>
+      </div>
+      <p class="text-xs text-ads-muted leading-relaxed">公開まで<b>5日以内</b>、または制作締切の1日前。先回りで声かけするゾーン</p>
+    </div>
+    <div class="bg-white border-l-4 border-blue-500 border border-ads-border rounded-xl p-4">
+      <div class="flex items-center gap-2 mb-1">
+        <span class="text-lg">🔵</span>
+        <span class="font-black text-slate-900 text-sm">順調</span>
+      </div>
+      <p class="text-xs text-ads-muted leading-relaxed">締切に余裕あり。何もしなくてOK</p>
+    </div>
+    <div class="bg-white border-l-4 border-slate-300 border border-ads-border rounded-xl p-4">
+      <div class="flex items-center gap-2 mb-1">
+        <span class="text-lg">⚪</span>
+        <span class="font-black text-slate-900 text-sm">情報不足</span>
+      </div>
+      <p class="text-xs text-ads-muted leading-relaxed">タイトル・投稿予定日・ステータス・制作担当・BO担当のどれかが空欄。まず入力から</p>
+    </div>
+  </div>
+
+  <div class="bg-ads-surface border border-ads-border rounded-xl p-4 flex items-start gap-3">
+    <i data-lucide="wrench" class="w-4 h-4 text-ads-accent shrink-0 mt-0.5"></i>
+    <p class="text-xs text-ads-muted leading-relaxed"><b class="text-slate-700">こまかい改善：</b>以前はマスターの⚪とダッシュボードの「情報不足リスト」で判定基準がズレていたのを統一しました。いまは<b class="text-slate-700">⚪の件数とリストが1:1で一致</b>します。🔴＋🟡＋🔵＋⚪＝全件数もピッタリ合うことを検証済み。</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!--  4. NEW COLUMNS                                              -->
+<!-- ============================================================ -->
+<section class="mb-14 md:mb-20">
+  <div class="flex items-center gap-3 mb-2">
+    <div class="w-8 h-8 rounded-lg bg-ads-accent/10 flex items-center justify-center">
+      <span class="text-ads-accent font-black text-sm">3</span>
+    </div>
+    <h2 class="text-xl md:text-2xl font-black text-slate-900">現場のリアルに合わせて、列を4つ追加</h2>
+  </div>
+  <p class="text-sm text-ads-muted mb-6 ml-11">「案件によって工程がちがう」「修正って動画？サムネ？」──今まで表現できなかったパターンに対応しました。</p>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+    <div class="bg-ads-surface border border-ads-border rounded-xl p-5">
+      <div class="flex items-center gap-2 mb-2">
+        <i data-lucide="layers" class="w-4 h-4 text-ads-accent"></i>
+        <span class="font-black text-slate-900 text-sm">案件タイプ</span>
+      </div>
+      <div class="flex flex-wrap gap-1.5 mb-2">
+        <span class="text-[10px] font-bold bg-white border border-ads-border rounded-full px-2 py-0.5 text-slate-600">通常</span>
+        <span class="text-[10px] font-bold bg-white border border-ads-border rounded-full px-2 py-0.5 text-slate-600">撮影なし</span>
+        <span class="text-[10px] font-bold bg-white border border-ads-border rounded-full px-2 py-0.5 text-slate-600">制作のみ</span>
+        <span class="text-[10px] font-bold bg-white border border-ads-border rounded-full px-2 py-0.5 text-slate-600">サムネなし</span>
+      </div>
+      <p class="text-xs text-ads-muted leading-relaxed">タイプを選ぶと、無い工程は<b>締切が空欄になってスキップ</b>される。設定シートの表で「どのタイプにどの工程があるか」を定義。</p>
+    </div>
+    <div class="bg-ads-surface border border-ads-border rounded-xl p-5">
+      <div class="flex items-center gap-2 mb-2">
+        <i data-lucide="camera" class="w-4 h-4 text-ads-accent"></i>
+        <span class="font-black text-slate-900 text-sm">撮影日</span>
+      </div>
+      <p class="text-xs text-ads-muted leading-relaxed">締切計算の起点になる新しい列。<b>撮影日から順算</b>で各工程の締切が決まる（くわしくは次のセクション）。</p>
+    </div>
+    <div class="bg-ads-surface border border-ads-border rounded-xl p-5">
+      <div class="flex items-center gap-2 mb-2">
+        <i data-lucide="pencil-ruler" class="w-4 h-4 text-ads-accent"></i>
+        <span class="font-black text-slate-900 text-sm">修正対象</span>
+      </div>
+      <div class="flex flex-wrap gap-1.5 mb-2">
+        <span class="text-[10px] font-bold bg-white border border-ads-border rounded-full px-2 py-0.5 text-slate-600">動画</span>
+        <span class="text-[10px] font-bold bg-white border border-ads-border rounded-full px-2 py-0.5 text-slate-600">サムネ</span>
+        <span class="text-[10px] font-bold bg-white border border-ads-border rounded-full px-2 py-0.5 text-slate-600">両方</span>
+      </div>
+      <p class="text-xs text-ads-muted leading-relaxed">修正依頼が来たとき「何の修正か」を記録。<b>サムネ修正ならボールはサムネ担当へ</b>、と行き先が正しくなる。</p>
+    </div>
+    <div class="bg-ads-surface border border-ads-border rounded-xl p-5">
+      <div class="flex items-center gap-2 mb-2">
+        <i data-lucide="file-stack" class="w-4 h-4 text-ads-accent"></i>
+        <span class="font-black text-slate-900 text-sm">提出稿</span>
+      </div>
+      <div class="flex flex-wrap gap-1.5 mb-2">
+        <span class="text-[10px] font-bold bg-white border border-ads-border rounded-full px-2 py-0.5 text-slate-600">初稿</span>
+        <span class="text-[10px] font-bold bg-white border border-ads-border rounded-full px-2 py-0.5 text-slate-600">修正稿</span>
+      </div>
+      <p class="text-xs text-ads-muted leading-relaxed">クライアント確認中の案件が「初稿の確認」なのか「修正稿の再確認」なのかを区別できるように。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!--  5. SCHEDULE                                                 -->
+<!-- ============================================================ -->
+<section class="mb-14 md:mb-20">
+  <div class="flex items-center gap-3 mb-2">
+    <div class="w-8 h-8 rounded-lg bg-ads-accent/10 flex items-center justify-center">
+      <span class="text-ads-accent font-black text-sm">4</span>
+    </div>
+    <h2 class="text-xl md:text-2xl font-black text-slate-900">締切の決め方：「逆算」から「順算＋リミット監視」へ</h2>
+  </div>
+  <p class="text-sm text-ads-muted mb-6 ml-11">今までは投稿予定日から逆算だけ。新方式は<b>撮影日から順に積み上げて</b>、投稿予定日に間に合うかを見張ります。</p>
+
+  <div class="bg-ads-surface border border-ads-border rounded-2xl p-5 md:p-7">
+    <!-- forward calc -->
+    <div class="text-xs font-bold text-slate-700 mb-3 flex items-center gap-1.5">
+      <i data-lucide="calendar-plus" class="w-3.5 h-3.5 text-ads-accent"></i>
+      順算 ── 撮影日を起点に、各工程の締切が自動で決まる
+    </div>
+    <div class="flex flex-col md:flex-row items-stretch gap-1.5 md:gap-0 mb-2">
+      <div class="flex-1 bg-white border border-ads-border rounded-lg p-3 text-center">
+        <i data-lucide="camera" class="w-4 h-4 text-slate-500 mx-auto mb-1"></i>
+        <div class="text-xs font-black text-slate-900">撮影日</div>
+        <div class="text-[10px] text-ads-dim">起点</div>
+      </div>
+      <div class="flex items-center justify-center md:w-14 py-0.5 md:py-0 flex-col">
+        <span class="text-[10px] font-bold text-ads-accent">+7日</span>
+        <i data-lucide="arrow-right" class="w-3.5 h-3.5 text-ads-dim hidden md:block"></i>
+        <i data-lucide="arrow-down" class="w-3.5 h-3.5 text-ads-dim md:hidden"></i>
+      </div>
+      <div class="flex-1 bg-sky-50 border border-sky-200 rounded-lg p-3 text-center">
+        <i data-lucide="scissors" class="w-4 h-4 text-sky-600 mx-auto mb-1"></i>
+        <div class="text-xs font-black text-slate-900">制作締切</div>
+      </div>
+      <div class="flex items-center justify-center md:w-14 py-0.5 md:py-0 flex-col">
+        <span class="text-[10px] font-bold text-ads-accent">+9日</span>
+        <i data-lucide="arrow-right" class="w-3.5 h-3.5 text-ads-dim hidden md:block"></i>
+        <i data-lucide="arrow-down" class="w-3.5 h-3.5 text-ads-dim md:hidden"></i>
+      </div>
+      <div class="flex-1 bg-sky-50 border border-sky-200 rounded-lg p-3 text-center">
+        <i data-lucide="image" class="w-4 h-4 text-sky-600 mx-auto mb-1"></i>
+        <div class="text-xs font-black text-slate-900">サムネ締切</div>
+      </div>
+      <div class="flex items-center justify-center md:w-14 py-0.5 md:py-0 flex-col">
+        <span class="text-[10px] font-bold text-ads-accent">+12日</span>
+        <i data-lucide="arrow-right" class="w-3.5 h-3.5 text-ads-dim hidden md:block"></i>
+        <i data-lucide="arrow-down" class="w-3.5 h-3.5 text-ads-dim md:hidden"></i>
+      </div>
+      <div class="flex-1 bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-center">
+        <i data-lucide="send" class="w-4 h-4 text-emerald-600 mx-auto mb-1"></i>
+        <div class="text-xs font-black text-slate-900">CL提出締切</div>
+      </div>
+    </div>
+    <p class="text-[11px] text-ads-dim mb-5">※ 「+○日」は設定シートで変更OK。<b class="text-amber-700">いまの 7・9・12 は仮の数字</b>で、BOヒアリングで実態に合わせて調整予定。</p>
+
+    <!-- limit -->
+    <div class="text-xs font-bold text-slate-700 mb-3 flex items-center gap-1.5">
+      <i data-lucide="calendar-x" class="w-3.5 h-3.5 text-red-500"></i>
+      リミット監視 ── 投稿予定日から逆算した「限界ライン」と突き合わせ
+    </div>
+    <div class="bg-white border border-ads-border rounded-xl p-4">
+      <div class="flex flex-col sm:flex-row items-center gap-3">
+        <div class="flex-1 text-center">
+          <div class="text-[11px] text-ads-muted mb-1">公開設定の締切</div>
+          <div class="text-sm font-black text-slate-900">投稿予定日の前日</div>
+          <div class="text-[10px] text-ads-dim">（固定ルール）</div>
+        </div>
+        <div class="hidden sm:block w-px h-10 bg-ads-border"></div>
+        <div class="flex-1 text-center">
+          <div class="text-[11px] text-ads-muted mb-1">もし順算のCL提出締切がリミットを越えたら…</div>
+          <div class="inline-flex items-center gap-1.5 bg-red-500/10 border border-red-500/20 rounded-full px-3 py-1">
+            <span class="text-sm">🔴</span>
+            <span class="text-xs font-black text-red-700">スケジュール破綻！と自動で警告</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!--  6. SETTINGS TABLE                                           -->
+<!-- ============================================================ -->
+<section class="mb-14 md:mb-20">
+  <div class="flex items-center gap-3 mb-2">
+    <div class="w-8 h-8 rounded-lg bg-ads-accent/10 flex items-center justify-center">
+      <span class="text-ads-accent font-black text-sm">5</span>
+    </div>
+    <h2 class="text-xl md:text-2xl font-black text-slate-900">「ステータス定義表」で、育てられるシートに</h2>
+  </div>
+  <p class="text-sm text-ads-muted mb-6 ml-11">各ステータスの「締切はどの工程？ボールは誰？」を設定シートの表で管理。<b>表に1行足すだけで新ステータスを追加</b>できます。</p>
+
+  <div class="bg-ads-surface border border-ads-border rounded-2xl p-5 md:p-7">
+    <div class="max-w-md mx-auto border border-ads-border rounded-xl overflow-hidden bg-white mb-4">
+      <div class="text-[11px] grid grid-cols-3 bg-slate-100 font-bold text-slate-700">
+        <div class="px-3 py-2 border-r border-ads-border">ステータス</div>
+        <div class="px-3 py-2 border-r border-ads-border">締切はどれ？</div>
+        <div class="px-3 py-2">ボール担当</div>
+      </div>
+      <div class="text-[11px] grid grid-cols-3 border-t border-ads-border">
+        <div class="px-3 py-2 border-r border-ads-border font-bold text-slate-800">編集中</div>
+        <div class="px-3 py-2 border-r border-ads-border text-slate-600">制作締切</div>
+        <div class="px-3 py-2 text-slate-600">制作担当</div>
+      </div>
+      <div class="text-[11px] grid grid-cols-3 border-t border-ads-border">
+        <div class="px-3 py-2 border-r border-ads-border font-bold text-slate-800">サムネ待ち</div>
+        <div class="px-3 py-2 border-r border-ads-border text-slate-600">サムネ締切</div>
+        <div class="px-3 py-2 text-slate-600">サムネ担当</div>
+      </div>
+      <div class="text-[11px] grid grid-cols-3 border-t border-ads-border">
+        <div class="px-3 py-2 border-r border-ads-border font-bold text-slate-800">CL確認中</div>
+        <div class="px-3 py-2 border-r border-ads-border text-slate-600">なし（相手待ち）</div>
+        <div class="px-3 py-2 text-slate-600">BO</div>
+      </div>
+      <div class="text-[11px] grid grid-cols-3 border-t border-ads-border bg-blue-50/60">
+        <div class="px-3 py-2 border-r border-ads-border font-bold text-ads-accent-light">（新ステータス）</div>
+        <div class="px-3 py-2 border-r border-ads-border text-slate-500 italic">行を足すだけ！</div>
+        <div class="px-3 py-2 text-slate-500 italic">↩ 自動で反映</div>
+      </div>
+    </div>
+    <div class="flex flex-col sm:flex-row gap-2 text-xs">
+      <div class="flex-1 flex items-start gap-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-2.5 text-emerald-800">
+        <i data-lucide="check" class="w-3.5 h-3.5 shrink-0 mt-0.5"></i>
+        <span>プルダウンの選択肢・締切判定・🚦は<b>自動で追従</b></span>
+      </div>
+      <div class="flex-1 flex items-start gap-2 bg-amber-500/10 border border-amber-500/20 rounded-lg p-2.5 text-amber-800">
+        <i data-lucide="paintbrush" class="w-3.5 h-3.5 shrink-0 mt-0.5"></i>
+        <span>チップ色だけは入力規則のパレットから手動で設定（1分で終わります）</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!--  7. COLOR POLICY                                             -->
+<!-- ============================================================ -->
+<section class="mb-14 md:mb-20">
+  <div class="flex items-center gap-3 mb-2">
+    <div class="w-8 h-8 rounded-lg bg-ads-accent/10 flex items-center justify-center">
+      <span class="text-ads-accent font-black text-sm">6</span>
+    </div>
+    <h2 class="text-xl md:text-2xl font-black text-slate-900">色のルールは、思いきってシンプルに</h2>
+  </div>
+  <p class="text-sm text-ads-muted mb-6 ml-11">行全体をカラフルに塗る案も試しましたが、ゴチャつくので却下。最終形は「見る場所が3つだけ」の構成です。</p>
+
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+    <div class="bg-ads-surface border border-ads-border rounded-xl p-5 text-center">
+      <div class="w-10 h-10 rounded-full bg-violet-500/10 flex items-center justify-center mx-auto mb-3">
+        <i data-lucide="hand" class="w-5 h-5 text-violet-500"></i>
+      </div>
+      <div class="font-black text-slate-900 text-sm mb-1">誰の番？</div>
+      <p class="text-xs text-ads-muted">→ ステータスの<b>チップ色</b></p>
+    </div>
+    <div class="bg-ads-surface border border-ads-border rounded-xl p-5 text-center">
+      <div class="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-3">
+        <i data-lucide="siren" class="w-5 h-5 text-red-500"></i>
+      </div>
+      <div class="font-black text-slate-900 text-sm mb-1">急ぎはどれ？</div>
+      <p class="text-xs text-ads-muted">→ <b>🚦列</b>とダッシュボード</p>
+    </div>
+    <div class="bg-ads-surface border border-ads-border rounded-xl p-5 text-center">
+      <div class="w-10 h-10 rounded-full bg-slate-400/10 flex items-center justify-center mx-auto mb-3">
+        <i data-lucide="check-check" class="w-5 h-5 text-slate-400"></i>
+      </div>
+      <div class="font-black text-slate-900 text-sm mb-1">終わったのは？</div>
+      <p class="text-xs text-ads-muted">→ <b>行ごとグレー</b>で退場</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!--  8. NEXT STEPS                                               -->
+<!-- ============================================================ -->
+<section class="mb-14 md:mb-20">
+  <div class="flex items-center gap-3 mb-6">
+    <div class="w-8 h-8 rounded-lg bg-ads-accent/10 flex items-center justify-center">
+      <i data-lucide="flag" class="w-4 h-4 text-ads-accent"></i>
+    </div>
+    <h2 class="text-xl md:text-2xl font-black text-slate-900">ここから先のステップ</h2>
+  </div>
+
+  <div class="space-y-3">
+    <div class="flex items-start gap-3 bg-ads-surface border border-ads-border rounded-xl p-4">
+      <div class="w-7 h-7 rounded-full bg-ads-accent text-white flex items-center justify-center font-black text-xs shrink-0">1</div>
+      <div>
+        <div class="font-bold text-slate-900 text-sm mb-0.5">BOレビュー（いまここ）</div>
+        <p class="text-xs text-ads-muted">増田さん・岩渕さんに試作版を触ってもらって、使い勝手をヒアリング</p>
+      </div>
+    </div>
+    <div class="flex items-start gap-3 bg-ads-surface border border-ads-border rounded-xl p-4">
+      <div class="w-7 h-7 rounded-full bg-white border-2 border-ads-accent text-ads-accent flex items-center justify-center font-black text-xs shrink-0">2</div>
+      <div>
+        <div class="font-bold text-slate-900 text-sm mb-0.5">順算日数の確定</div>
+        <p class="text-xs text-ads-muted">仮置きの「7・9・12日」を、実際の制作リードタイムに合わせて調整</p>
+      </div>
+    </div>
+    <div class="flex items-start gap-3 bg-ads-surface border border-ads-border rounded-xl p-4">
+      <div class="w-7 h-7 rounded-full bg-white border-2 border-ads-accent text-ads-accent flex items-center justify-center font-black text-xs shrink-0">3</div>
+      <div>
+        <div class="font-bold text-slate-900 text-sm mb-0.5">本番へ反映</div>
+        <p class="text-xs text-ads-muted">レビューOKが出たら、本番シートに同じ改修を適用して切り替え</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!--  CLOSING                                                     -->
+<!-- ============================================================ -->
+<section>
+  <div class="text-center bg-gradient-to-b from-ads-accent/5 to-transparent border border-ads-accent/10 rounded-xl p-8 md:p-10">
+    <i data-lucide="rocket" class="w-8 h-8 text-ads-accent mx-auto mb-4"></i>
+    <p class="text-lg font-bold text-slate-900 mb-3">まとめ：「入力はラクに、見落としはゼロに」</p>
+    <p class="text-ads-muted max-w-lg mx-auto leading-relaxed mb-4">
+      ステータス更新はプルダウン1つ。そのかわり、更新忘れ・スケジュール破綻・情報不足は<br class="hidden md:block">
+      シートが自動で見つけて教えてくれる。そんな役割分担に変わりました。
+    </p>
+    <p class="text-xs text-ads-dim">iMuseLLC 案件進捗管理シート 改良まとめ ・ 2026/07/02 更新</p>
+  </div>
+</section>
+
+  </main>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>lucide.createIcons();</script>
+</body>
+</html>

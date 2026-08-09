@@ -10,4 +10,5 @@ service_account.json
 .DS_Store
 
 # Tailwind CSS のスタンドアロンバイナリ（プラットフォーム依存）
-bin/tailwindcss
+dashboard/bin/tailwindcss
+!sheet/deploy-history.log

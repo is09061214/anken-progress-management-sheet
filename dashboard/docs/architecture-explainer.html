@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>進捗信号ダッシュボード — 仕組み図解</title>
+  <style>
+    :root {
+      --bg: #f1f5f9;
+      --surface: #fff;
+      --ink: #0f172a;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --indigo: #6366f1;
+      --indigo-bg: #eef2ff;
+      --red: #ef4444;
+      --red-bg: #fef2f2;
+      --yellow: #eab308;
+      --yellow-bg: #fefce8;
+      --blue: #3b82f6;
+      --blue-bg: #eff6ff;
+      --gray-s: #94a3b8;
+      --shadow: 0 4px 24px rgba(15,23,42,.08);
+      --radius: 16px;
+      --font: "Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic",sans-serif;
+      --mono: "SF Mono","Fira Code",Consolas,monospace;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{scroll-behavior:smooth}
+    body{font-family:var(--font);background:var(--bg);color:var(--ink);line-height:1.75;font-size:15px}
+    code{font-family:var(--mono);font-size:.85em;background:rgba(0,0,0,.06);padding:.1em .4em;border-radius:4px}
+
+    .hero{background:linear-gradient(135deg,#0f172a 0%,#1e293b 45%,#312e81 100%);color:#fff;padding:3.5rem 1.5rem 4.5rem;position:relative;overflow:hidden}
+    .hero::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 15% 85%,rgba(99,102,241,.35),transparent 50%),radial-gradient(circle at 85% 15%,rgba(239,68,68,.12),transparent 40%);pointer-events:none}
+    .wrap{max-width:960px;margin:0 auto;padding:0 1.25rem}
+    .hero-inner{position:relative}
+    .badge{display:inline-block;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:999px;padding:.3rem 1rem;font-size:.75rem;margin-bottom:1rem}
+    .hero h1{font-size:clamp(1.7rem,5vw,2.6rem);font-weight:800;line-height:1.25}
+    .hero p{margin-top:1rem;color:#cbd5e1;max-width:640px;font-size:1.02rem}
+    .dots{display:flex;gap:1.25rem;margin-top:2rem;flex-wrap:wrap}
+    .dot-wrap{text-align:center}
+    .dot{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;box-shadow:0 4px 14px rgba(0,0,0,.3)}
+    .dot.red{background:var(--red);animation:pulse 2s ease-in-out infinite}
+    .dot.yellow{background:var(--yellow);color:#422006}
+    .dot.blue{background:var(--blue)}
+    .dot.gray{background:var(--gray-s)}
+    .dot-lbl{font-size:.72rem;color:#94a3b8;margin-top:.3rem}
+    @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.45)}50%{box-shadow:0 0 0 14px rgba(239,68,68,0)}}
+
+    .elevator{background:var(--surface);border-radius:var(--radius);padding:1.75rem;margin-top:-2rem;position:relative;z-index:2;box-shadow:var(--shadow);border:1px solid var(--border)}
+    .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:.5rem;margin-top:1.25rem}
+    @media(min-width:700px){.steps{grid-template-columns:1fr auto 1fr auto 1fr auto 1fr auto 1fr;align-items:center}}
+    .step{background:var(--bg);border-radius:10px;padding:.85rem .5rem;text-align:center}
+    .step .n{width:26px;height:26px;background:var(--indigo);color:#fff;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;margin-bottom:.4rem}
+    .step .t{font-size:.8rem;font-weight:700}
+    .arr{display:none;color:var(--muted);text-align:center;font-size:1.1rem}
+    @media(min-width:700px){.arr{display:block}}
+
+    section{padding:3rem 0;border-top:1px solid var(--border)}
+    .tag{display:inline-block;font-size:.7rem;font-weight:700;letter-spacing:.06em;color:var(--indigo);background:var(--indigo-bg);padding:.2rem .7rem;border-radius:999px;margin-bottom:.6rem}
+    h2{font-size:clamp(1.3rem,3vw,1.65rem);font-weight:800;margin-bottom:.4rem}
+    .lead{color:var(--muted);margin-bottom:1.75rem;max-width:720px}
+
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.35rem}
+    .grid{display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+
+    .source{text-align:center;background:#ecfdf5;border:2px solid #6ee7b7;border-radius:var(--radius);padding:1.25rem;margin-bottom:.5rem}
+    .core{background:#eff6ff;border:2px solid #93c5fd;border-radius:var(--radius);padding:1.25rem;margin:.5rem 0}
+    .arrow{text-align:center;color:var(--indigo);font-size:1.4rem;padding:.4rem 0}
+    .lanes{display:grid;gap:1rem}
+    @media(min-width:768px){.lanes{grid-template-columns:1fr 1fr}}
+    .lane{border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;background:var(--surface)}
+    .lane-h{padding:.8rem 1.1rem;font-weight:800;font-size:.88rem}
+    .lane-h.a{background:#dbeafe;color:#1e40af}
+    .lane-h.b{background:#ede9fe;color:#5b21b6}
+    .lane-h.c{background:#ffedd5;color:#9a3412;grid-column:1/-1}
+    .lane-b{padding:1.1rem}
+    .lane-b ol{padding-left:1.2rem;font-size:.84rem;color:var(--muted)}
+    .lane-b li{margin:.35rem 0}
+
+    .timeline{position:relative;padding-left:1.75rem}
+    .timeline::before{content:"";position:absolute;left:6px;top:6px;bottom:6px;width:2px;background:linear-gradient(var(--indigo),var(--blue))}
+    .tl-item{position:relative;padding-bottom:1.4rem}
+    .tl-item::before{content:"";position:absolute;left:-1.75rem;top:5px;width:12px;height:12px;background:var(--indigo);border:3px solid var(--surface);border-radius:50%}
+    .tl-time{font-family:var(--mono);font-size:.7rem;color:var(--indigo);font-weight:700}
+    .tl-item h4{font-size:.9rem;font-weight:800;margin-top:.15rem}
+    .tl-item p{font-size:.82rem;color:var(--muted);margin-top:.2rem}
+
+    .tree-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:2rem 1rem;overflow-x:auto}
+    .tree{display:flex;flex-direction:column;align-items:center;min-width:300px}
+    .tnode{background:var(--bg);border:2px solid var(--border);border-radius:10px;padding:.65rem 1rem;font-size:.82rem;font-weight:600;text-align:center;max-width:320px;width:100%}
+    .tnode.start{background:#ecfdf5;border-color:#34d399}
+    .tnode.q{background:#fffbeb;border-color:#fbbf24;border-radius:999px}
+    .tnode.r{color:#fff;font-weight:800;border:none;padding:.85rem 1.2rem}
+    .tnode.r.red{background:var(--red)}
+    .tnode.r.yellow{background:var(--yellow);color:#422006}
+    .tnode.r.blue{background:var(--blue)}
+    .tnode.r.gray{background:var(--gray-s)}
+    .tnode.r.dim{background:#64748b;font-size:.75rem}
+    .vline{width:2px;height:20px;background:var(--border)}
+    .branch{display:grid;grid-template-columns:1fr 1fr;gap:1rem;width:100%;max-width:480px;margin-top:.25rem}
+    .branch-item{display:flex;flex-direction:column;align-items:center}
+    .blabel{font-size:.68rem;font-weight:700;color:var(--muted);background:var(--bg);padding:.1rem .45rem;border-radius:4px;margin-bottom:.25rem}
+    .quad{display:grid;grid-template-columns:repeat(4,1fr);gap:.6rem;width:100%;max-width:520px;margin-top:.25rem}
+    @media(max-width:560px){.branch,.quad{grid-template-columns:1fr 1fr}}
+
+    table.sheet{width:100%;border-collapse:collapse;font-size:.76rem}
+    table.sheet th,table.sheet td{border:1px solid var(--border);padding:.45rem .55rem}
+    table.sheet .gantt{background:#f1f5f9;color:var(--muted);font-size:.68rem}
+    table.sheet .hdr{background:#1e293b;color:#fff;font-weight:700}
+    table.sheet .use{background:#eff6ff}
+    table.sheet .skip{background:#f8fafc;color:var(--muted)}
+    table.cmp{width:100%;border-collapse:collapse;font-size:.82rem;margin-top:1.25rem}
+    table.cmp th{background:#0f172a;color:#fff;padding:.55rem .75rem;text-align:left}
+    table.cmp td{border:1px solid var(--border);padding:.55rem .75rem}
+    table.cmp tr:nth-child(even) td{background:var(--bg)}
+    .pill{font-size:.65rem;font-weight:700;padding:.12rem .4rem;border-radius:4px}
+    .pill.g{background:#f0fdf4;color:#15803d}
+    .pill.w{background:#fefce8;color:#a16207}
+
+    .discord{background:#313338;border-radius:var(--radius);padding:1.1rem;color:#dbdee1;font-size:.84rem;max-width:480px}
+    .d-head{display:flex;gap:.65rem;align-items:flex-start;margin-bottom:.65rem}
+    .d-av{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#a855f7);display:flex;align-items:center;justify-content:center}
+    .d-name{font-weight:700;color:#fff}
+    .d-time{font-size:.7rem;color:#949ba4;margin-left:.4rem}
+    .d-body{margin-left:46px}
+    .mention{background:rgba(88,101,242,.3);color:#dee0fc;padding:0 2px;border-radius:3px}
+    .d-img{margin-top:.65rem;background:#f8fafc;border-radius:8px;padding:.85rem;color:var(--ink)}
+    .d-img-h{background:#0f172a;color:#fff;text-align:center;padding:.5rem;margin:-.85rem -.85rem .65rem;border-radius:8px 8px 0 0;font-size:.72rem;font-weight:700}
+    .d-circles{display:grid;grid-template-columns:repeat(4,1fr);gap:.4rem;text-align:center}
+    .mc{width:32px;height:32px;border-radius:50%;margin:0 auto .2rem;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:.8rem}
+
+    .kodawari{display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(270px,1fr))}
+    .k-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;transition:transform .2s,box-shadow .2s}
+    .k-card:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+    .k-card .e{font-size:1.4rem;margin-bottom:.35rem}
+    .k-card h3{font-size:.92rem;font-weight:800;margin-bottom:.3rem}
+    .k-card p{font-size:.81rem;color:var(--muted)}
+    .k-file{display:inline-block;margin-top:.55rem;font-family:var(--mono);font-size:.7rem;color:var(--indigo);background:var(--indigo-bg);padding:.2rem .45rem;border-radius:4px}
+
+    .mod{display:grid;grid-template-columns:130px 1fr;gap:.65rem;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:.75rem 1rem;font-size:.81rem;margin-bottom:.5rem}
+    @media(max-width:480px){.mod{grid-template-columns:1fr}}
+    .mod-n{font-family:var(--mono);font-weight:700;color:var(--indigo);font-size:.76rem;word-break:break-all}
+    .mod-d{color:var(--muted)}
+
+    .toc{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.2rem 1.4rem;margin:2rem 0}
+    .toc h3{font-size:.82rem;color:var(--muted);margin-bottom:.6rem}
+    .toc ol{padding-left:1.2rem}
+    .toc a{color:var(--indigo);font-weight:600;text-decoration:none;font-size:.85rem}
+    .toc a:hover{text-decoration:underline}
+    .toc li{margin:.3rem 0}
+
+    .signal-cards{display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));margin-top:1.5rem}
+    .sig{border-left:4px solid;padding:1rem;background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;border:1px solid var(--border)}
+    .sig.red{border-left-color:var(--red)}
+    .sig.yellow{border-left-color:var(--yellow)}
+    .sig.blue{border-left-color:var(--blue)}
+    .sig.gray{border-left-color:var(--gray-s)}
+    .sig strong{display:block;margin-bottom:.25rem}
+    .sig p{font-size:.82rem;color:var(--muted)}
+
+    .two{display:grid;gap:1.25rem}
+    @media(min-width:768px){.two{grid-template-columns:1fr 1fr}}
+
+    footer{text-align:center;padding:2rem 1rem;color:var(--muted);font-size:.76rem;background:var(--surface);border-top:1px solid var(--border)}
+    pre.cmd{font-family:var(--mono);font-size:.75rem;background:#1e293b;color:#e2e8f0;padding:1rem;border-radius:10px;overflow-x:auto;line-height:1.7;margin-top:.75rem}
+  </style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap hero-inner">
+    <span class="badge">📊 youtube-progress-dashboard</span>
+    <h1>iMuseLLC 案件<br>進捗信号ダッシュボード</h1>
+    <p>Google スプレッドシートの「案件管理表」を読み取り、<strong>赤・黄・青・灰</strong>の4色信号に変換。Web と Discord で、チーム全員が<strong>30秒で危険案件を把握</strong>できる仕組みです。</p>
+    <div class="dots">
+      <div class="dot-wrap"><div class="dot red">赤</div><div class="dot-lbl">遅延中</div></div>
+      <div class="dot-wrap"><div class="dot yellow">黄</div><div class="dot-lbl">要注意</div></div>
+      <div class="dot-wrap"><div class="dot blue">青</div><div class="dot-lbl">順調</div></div>
+      <div class="dot-wrap"><div class="dot gray">灰</div><div class="dot-lbl">情報不足</div></div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="elevator">
+    <span class="tag">30秒で理解</span>
+    <h2 style="font-size:1.15rem">このツールがやっていること</h2>
+    <p style="color:var(--muted);font-size:.88rem;margin-top:.3rem">人間が毎朝シートを目視チェックする代わりに、<strong>機械が同じ列だけを読んで信号化</strong>し、危ない案件だけを前面に出します。</p>
+    <div class="steps">
+      <div class="step"><div class="n">1</div><div class="t">Sheets<br>読み取り</div></div>
+      <div class="arr">→</div>
+      <div class="step"><div class="n">2</div><div class="t">信号<br>判定</div></div>
+      <div class="arr">→</div>
+      <div class="step"><div class="n">3</div><div class="t">Web<br>表示</div></div>
+      <div class="arr">→</div>
+      <div class="step"><div class="n">4</div><div class="t">Discord<br>通知</div></div>
+      <div class="arr">→</div>
+      <div class="step"><div class="n">5</div><div class="t">チーム<br>が対応</div></div>
+    </div>
+  </div>
+
+  <nav class="toc">
+    <h3>📑 目次</h3>
+    <ol>
+      <li><a href="#arch">全体アーキテクチャ — 3つの配信ルート</a></li>
+      <li><a href="#pipe">データパイプライン — シートから信号まで</a></li>
+      <li><a href="#signal">信号判定ロジック</a></li>
+      <li><a href="#sheet">スプレッドシート構造</a></li>
+      <li><a href="#discord">Discord 朝通知</a></li>
+      <li><a href="#kodawari">こだわりポイント 12選</a></li>
+      <li><a href="#files">ファイル構成</a></li>
+    </ol>
+  </nav>
+
+  <!-- Chapter 1 -->
+  <section id="arch">
+    <span class="tag">Chapter 1</span>
+    <h2>全体アーキテクチャ</h2>
+    <p class="lead">データの<strong>源泉は1つ</strong>（Google スプレッドシート）。届け方は<strong>3ルート</strong>。判定ロジック（<code>app/signal.py</code>）は Web も Discord も<strong>同じコードを共有</strong>するので、表示と通知がズレません。</p>
+
+    <div class="source">
+      <div style="font-size:1.6rem;margin-bottom:.35rem">📋</div>
+      <strong>Google スプレッドシート「iMuseLLC 案件管理表」</strong>
+      <p style="font-size:.82rem;color:var(--muted);margin-top:.35rem">チーム全員が普段更新。ダッシュボードは<strong>読み取り専用</strong>。</p>
+    </div>
+    <div class="arrow">↓</div>
+    <div class="core">
+      <strong>⚙️ 共通処理コア（Python <code>app/</code>）</strong>
+      <ul style="font-size:.82rem;color:var(--muted);margin-top:.5rem;padding-left:1.2rem">
+        <li><code>sheets.py</code> — 取得・日付パース・ヘッダー検証</li>
+        <li><code>signal.py</code> — 赤黄青灰の判定</li>
+        <li><code>config.py</code> — 列番号・閾値・JST</li>
+      </ul>
+    </div>
+    <div class="arrow">↓ 同じ判定結果を3ルートで配信 ↓</div>
+
+    <div class="lanes">
+      <div class="lane">
+        <div class="lane-h a">🌐 ルート A — Web ダッシュボード</div>
+        <div class="lane-b">
+          <ol>
+            <li><strong>FastAPI</strong> が起動時＋60分ごとに取得</li>
+            <li><strong>VideoStore</strong> がメモリにキャッシュ</li>
+            <li><strong>Jinja2</strong> で HTML 生成</li>
+            <li>Cloud Run 等で常時公開</li>
+          </ol>
+          <p style="font-size:.72rem;color:var(--muted);margin-top:.5rem"><code>GET /</code> · <code>POST /refresh</code> · <code>GET /healthz</code></p>
+        </div>
+      </div>
+      <div class="lane">
+        <div class="lane-h b">💬 ルート B — Discord 朝の進捗通知</div>
+        <div class="lane-b">
+          <ol>
+            <li><strong>GitHub Actions</strong> が毎朝 cron 実行</li>
+            <li><code>discord_notify.py</code> が同じ app を import</li>
+            <li><strong>Pillow</strong> で 1200×630 サマリ画像</li>
+            <li>Webhook に画像＋挨拶＋格言を POST</li>
+          </ol>
+          <p style="font-size:.72rem;color:var(--muted);margin-top:.5rem"><code>discord_morning.yml</code>（JST 6:30前後）</p>
+        </div>
+      </div>
+      <div class="lane" style="grid-column:1/-1">
+        <div class="lane-h c">🎬 ルート C — 撮影予定 月曜朝通知</div>
+        <div class="lane-b">
+          <ol>
+            <li>毎週月曜、<strong>Google カレンダー</strong>から今後14日間の「撮影」イベント取得</li>
+            <li><code>film_notify.py</code> が Discord に撮影予定を通知</li>
+          </ol>
+          <p style="font-size:.72rem;color:var(--muted);margin-top:.35rem">進捗信号とは別系統。同じ Discord / GitHub Actions 基盤。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Chapter 2 -->
+  <section id="pipe">
+    <span class="tag">Chapter 2</span>
+    <h2>データパイプライン</h2>
+    <p class="lead">シートの1行が、どうやってダッシュボードの1行になるか。</p>
+    <div class="timeline">
+      <div class="tl-item"><div class="tl-time">Step 1</div><h4>🔐 サービスアカウントで Sheets API に接続</h4><p>ローカルは JSON ファイル、GitHub Actions は Secrets の JSON 文字列を一時ファイル化、Cloud Run は ADC。</p></div>
+      <div class="tl-item"><div class="tl-time">Step 2</div><h4>📑 WORKSHEET_GID で正しいタブを選択</h4><p>不一致時は<strong>例外</strong>（先頭タブへの自動フォールバックは既定 OFF）。誤シート読み込み事故を防ぐ。</p></div>
+      <div class="tl-item"><div class="tl-time">Step 3</div><h4>✅ 行2のヘッダーをキーワードで検証</h4><p>「クライアント」「動画」「状況」「投稿」等。列構成変更に即気づける。</p></div>
+      <div class="tl-item"><div class="tl-time">Step 4</div><h4>🧹 ノイズ行を除外</h4><p>「未入力」「未撮影」「未定」等のプレースホルダ、公開済み（完了/済）、空行をスキップ。</p></div>
+      <div class="tl-item"><div class="tl-time">Step 5</div><h4>📅 年なし日付を JST 基準で年補完</h4><p><code>5/10</code> 形式も <code>infer_year()</code> で最も妥当な年を推定。</p></div>
+      <div class="tl-item"><div class="tl-time">Step 6</div><h4>🚦 D列 × F列 → 赤黄青灰</h4><p>たった2列だけ。ガント列（I以降）は使わない。</p></div>
+      <div class="tl-item"><div class="tl-time">Step 7</div><h4>📊 赤・黄を優先表示、灰は折りたたみ</h4><p>ソート: 赤→黄→灰→青。モバイルはカード、PCはテーブル。</p></div>
+    </div>
+  </section>
+
+  <!-- Chapter 3 -->
+  <section id="signal">
+    <span class="tag">Chapter 3</span>
+    <h2>信号判定ロジック</h2>
+    <p class="lead">「いつ公開予定か」と「完了したか」だけで全案件を4色に分類。</p>
+
+    <div class="tree-wrap">
+      <div class="tree">
+        <div class="tnode start">📥 1件の案件が入ってきた</div>
+        <div class="vline"></div>
+        <div class="tnode q">A列「済」or F列「完了」？</div>
+        <div class="branch">
+          <div class="branch-item"><div class="blabel">YES</div><div class="vline"></div><div class="tnode r dim">公開済み → 一覧から除外</div></div>
+          <div class="branch-item"><div class="blabel">NO</div><div class="vline"></div><div class="tnode q">D列 公開予定日は設定済み？</div></div>
+        </div>
+        <div class="vline" style="height:12px"></div>
+        <div class="branch">
+          <div class="branch-item"><div class="blabel">未設定</div><div class="vline"></div><div class="tnode r gray">⚪ 灰</div></div>
+          <div class="branch-item"><div class="blabel">設定あり</div><div class="vline"></div><div class="tnode q">残り日数 = 公開日 − 今日(JST)</div></div>
+        </div>
+        <div class="vline" style="height:12px"></div>
+        <div class="quad">
+          <div class="branch-item"><div class="blabel">≥5日</div><div class="tnode r blue">🔵 青</div></div>
+          <div class="branch-item"><div class="blabel">0〜4日</div><div class="tnode r yellow">🟡 黄</div></div>
+          <div class="branch-item"><div class="blabel">マイナス</div><div class="tnode r red">🔴 赤</div></div>
+          <div class="branch-item"><div class="blabel">設定</div><div class="tnode" style="font-size:.7rem;padding:.4rem">config.py<br>で変更可</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="signal-cards">
+      <div class="sig red"><strong>🔴 赤 — 遅延中</strong><p>公開予定日を過ぎているのに未完了。パルスアニメーションで強調。</p></div>
+      <div class="sig yellow"><strong>🟡 黄 — 要注意</strong><p>公開まで残り0〜4日。今週中に動く必要あり。</p></div>
+      <div class="sig blue"><strong>🔵 青 — 順調</strong><p>残り5日以上。要対応セクションには出ない。</p></div>
+      <div class="sig gray"><strong>⚪ 灰 — 情報不足</strong><p>D列空欄。折りたたみセクションに隔離。</p></div>
+    </div>
+  </section>
+
+  <!-- Chapter 4 -->
+  <section id="sheet">
+    <span class="tag">Chapter 4</span>
+    <h2>スプレッドシート構造</h2>
+    <p class="lead">複雑なガント表だが、プログラムが使うのは<strong>4列だけ</strong>。</p>
+    <div class="card" style="overflow-x:auto">
+      <table class="sheet">
+        <tr class="gantt"><td colspan="2">行1: ガント用日付ラベル（無視）</td><td>3/1</td><td>3/2</td><td>...</td><td colspan="2" class="skip">I列以降も無視</td></tr>
+        <tr class="hdr"><td>A<br>投稿</td><td>B<br>クライアント</td><td>C<br>#</td><td class="use">D<br>投稿</td><td class="use">E<br>動画</td><td class="use">F<br>状況</td><td>G<br>編集</td><td>H<br>BO</td></tr>
+        <tr><td class="use"></td><td>DEP</td><td>116</td><td class="use"><strong>5/10</strong></td><td class="use">骨盤調整ストレッチ</td><td class="use"><strong>編集中</strong></td><td>GS</td><td>増田</td></tr>
+        <tr><td class="use">済</td><td>1sec</td><td>38</td><td class="use">4/28</td><td class="use">皮膚病について</td><td class="use">完了</td><td>GS</td><td>増田</td></tr>
+        <tr><td></td><td>そうぞう</td><td>98</td><td class="use"><strong>（空欄）</strong></td><td class="use">新作未定</td><td class="use">企画中</td><td></td><td>岩渕</td></tr>
+      </table>
+    </div>
+    <table class="cmp">
+      <tr><th>列</th><th>役割</th></tr>
+      <tr><td><strong>A</strong></td><td>「済」→ 公開済み・除外</td></tr>
+      <tr><td><strong>D</strong></td><td><span class="pill g">核心</span> 残り日数の計算元</td></tr>
+      <tr><td><strong>E</strong></td><td>表示用。プレースホルダ行は除外</td></tr>
+      <tr><td><strong>F</strong></td><td><span class="pill g">核心</span> 「完了」→ 除外</td></tr>
+      <tr><td>I以降</td><td><span class="pill w">不使用</span> 人間用ガント</td></tr>
+    </table>
+  </section>
+
+  <!-- Chapter 5 -->
+  <section id="discord">
+    <span class="tag">Chapter 5</span>
+    <h2>Discord 朝通知</h2>
+    <p class="lead">毎朝、画像1枚で状況が分かる設計。開封しなくても赤黄の件数が見える。</p>
+    <div class="two">
+      <div class="card">
+        <strong>⏰ スケジュール</strong>
+        <ul style="font-size:.82rem;color:var(--muted);margin-top:.5rem;padding-left:1.1rem">
+          <li>cron: <code>30 21 * * *</code> (UTC) ≈ JST 6:30</li>
+          <li>GitHub 遅延を見越し30分前倒し</li>
+          <li>Actions から手動実行も可</li>
+          <li>Schedule keepalive で cron 維持</li>
+        </ul>
+      </div>
+      <div class="discord">
+        <div class="d-head"><div class="d-av">🐱</div><div><span class="d-name">ミュー</span><span class="d-time">7:02</span></div></div>
+        <div class="d-body">
+          <p><span class="mention">@everyone</span></p>
+          <p style="margin-top:.4rem"><strong># 📊 案件進捗ダッシュボード</strong></p>
+          <p style="margin-top:.4rem;font-size:.78rem;color:#b5bac1">水曜日の朝です。週の折り返し🚀<br><strong>【本日の格言】</strong> 千里の道も一歩から。 — 老子</p>
+          <div class="d-img">
+            <div class="d-img-h">案件進捗サマリ 2026/05/24 (土)</div>
+            <div class="d-circles">
+              <div><div class="mc" style="background:#ef4444">2</div><div style="font-size:.62rem">赤</div></div>
+              <div><div class="mc" style="background:#eab308;color:#422006">3</div><div style="font-size:.62rem">黄</div></div>
+              <div><div class="mc" style="background:#3b82f6">8</div><div style="font-size:.62rem">青</div></div>
+              <div><div class="mc" style="background:#94a3b8">1</div><div style="font-size:.62rem">灰</div></div>
+            </div>
+            <p style="text-align:center;font-size:.7rem;margin-top:.5rem;color:var(--muted)">要対応 5 本 / 対応中 14 本</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="grid" style="margin-top:1.25rem">
+      <div class="card"><strong>🖼️ 1200×630 PNG</strong><p style="font-size:.82rem;color:var(--muted);margin-top:.3rem">OGPサイズ。Discord自動プレビュー。</p></div>
+      <div class="card"><strong>📜 日替わり格言 100件+</strong><p style="font-size:.82rem;color:var(--muted);margin-top:.3rem">全件1サイクル巡回。短期間で被らないシャッフル。</p></div>
+      <div class="card"><strong>👋 日替わり挨拶</strong><p style="font-size:.82rem;color:var(--muted);margin-top:.3rem">曜日別＋一般。日付シードで全員同じ挨拶。</p></div>
+      <div class="card"><strong>🔄 Keepalive</strong><p style="font-size:.82rem;color:var(--muted);margin-top:.3rem">60日無活動でcron停止する問題への週次対策。</p></div>
+    </div>
+  </section>
+
+  <!-- Chapter 6 -->
+  <section id="kodawari">
+    <span class="tag">Chapter 6 — 開発者のこだわり</span>
+    <h2>設計上の工夫 12選</h2>
+    <p class="lead">「動けばいい」ではなく、<strong>運用で事故らない</strong>ことを最優先に設計されたポイント。</p>
+    <div class="kodawari">
+      <div class="k-card"><div class="e">🌏</div><h3>JST 固定の「今日」</h3><p>UTC サーバーでも納期判定が1日ズレない。</p><span class="k-file">app/config.py</span></div>
+      <div class="k-card"><div class="e">📅</div><h3>年なし日付の年補完</h3><p>「5/10」と書くだけで動く。年末年始の境界も考慮。</p><span class="k-file">app/schedule.py</span></div>
+      <div class="k-card"><div class="e">🛡️</div><h3>誤シート読み込み防止</h3><p>GID不一致で先頭タブにフォールバックしない（既定OFF）。</p><span class="k-file">app/sheets.py</span></div>
+      <div class="k-card"><div class="e">🚫</div><h3>本番でサンプルに化けない</h3><p>取得失敗は赤バナーで明示。静かにダミー表示しない。</p><span class="k-file">fetch_videos()</span></div>
+      <div class="k-card"><div class="e">♻️</div><h3>判定ロジック完全共有</h3><p>WebとDiscordが同じ signal.py を使う。</p><span class="k-file">discord_notify.py</span></div>
+      <div class="k-card"><div class="e">🎯</div><h3>2列だけで判定</h3><p>ガント列は使わない。シンプル＝壊れにくい。</p><span class="k-file">app/signal.py</span></div>
+      <div class="k-card"><div class="e">💓</div><h3>赤のパルスアニメ</h3><p>「今すぐ見ろ」という視覚的緊急度。</p><span class="k-file">dashboard.html</span></div>
+      <div class="k-card"><div class="e">📱</div><h3>モバイル/PC 二段UI</h3><p>Discord→リンク→スマホでカード確認の導線。</p><span class="k-file">dashboard.html</span></div>
+      <div class="k-card"><div class="e">♿</div><h3>アクセシビリティ</h3><p>スキップリンク、aria-label、time要素。</p><span class="k-file">dashboard.html</span></div>
+      <div class="k-card"><div class="e">🏥</div><h3>/healthz 鮮度チェック</h3><p>更新間隔の3倍超過で503。監視連携可。</p><span class="k-file">app/main.py</span></div>
+      <div class="k-card"><div class="e">🔐</div><h3>3通りの Google 認証</h3><p>JSON / Secrets文字列 / Cloud Run ADC。</p><span class="k-file">sheets.py</span></div>
+      <div class="k-card"><div class="e">🧪</div><h3>サンプルで即試せる</h3><p>USE_SAMPLE_DATA=True で全信号パターン網羅。</p><span class="k-file">sample_videos()</span></div>
+    </div>
+  </section>
+
+  <!-- Chapter 7 -->
+  <section id="files">
+    <span class="tag">Chapter 7</span>
+    <h2>ファイル構成</h2>
+    <p class="lead">困ったときにどこを見ればいいかの索引。</p>
+    <div class="mod"><div class="mod-n">app/main.py</div><div class="mod-d">FastAPI。/ ダッシュボード、/refresh 手動更新、/healthz</div></div>
+    <div class="mod"><div class="mod-n">app/signal.py</div><div class="mod-d">信号判定の心臓部</div></div>
+    <div class="mod"><div class="mod-n">app/sheets.py</div><div class="mod-d">Sheets取得・日付パース・ヘッダー検証</div></div>
+    <div class="mod"><div class="mod-n">app/config.py</div><div class="mod-d">列番号・閾値・環境変数</div></div>
+    <div class="mod"><div class="mod-n">app/scheduler.py</div><div class="mod-d">VideoStore キャッシュ + 60分ごと更新</div></div>
+    <div class="mod"><div class="mod-n">scripts/discord_notify.py</div><div class="mod-d">朝のDiscord通知・画像生成・格言</div></div>
+    <div class="mod"><div class="mod-n">.github/workflows/</div><div class="mod-d">discord_morning / film_monday / schedule_keepalive</div></div>
+    <div class="card" style="margin-top:1rem;background:var(--indigo-bg);border-color:#c7d2fe">
+      <strong>ローカル起動</strong>
+      <pre class="cmd">cd "/Users/itaruvlog/src/報告ツール作成"
+source .venv/bin/activate
+uvicorn app.main:app --reload --port 8000</pre>
+    </div>
+  </section>
+</div>
+
+<footer>
+  <p>iMuseLLC 案件 進捗信号ダッシュボード — 仕組み図解</p>
+  <p style="margin-top:.3rem">GitHub: is09061214/youtube-progress-dashboard</p>
+</footer>
+</body>
+</html>
