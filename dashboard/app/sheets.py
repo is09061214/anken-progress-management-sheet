@@ -334,6 +334,45 @@ def _build_credentials(scopes: list[str]):
     return creds
 
 
+# Google API の一時エラー（過負荷・レート制限）とみなして再試行する HTTP ステータス
+_RETRYABLE_STATUS = {429, 500, 502, 503, 504}
+_RETRY_ATTEMPTS = 3
+_RETRY_WAIT_SECONDS = 30
+
+
+def _fetch_grid_with_retry(client, sheet_id: str) -> list[list[str]]:
+    """シートのグリッドを取得する。一時エラーは待って最大3回まで再試行。
+
+    SheetSchemaError（タブが見つからない等の設定ミス）は再試行しない。
+    """
+    import time
+
+    import gspread
+    import requests
+
+    for attempt in range(1, _RETRY_ATTEMPTS + 1):
+        try:
+            spreadsheet = client.open_by_key(sheet_id)
+            worksheet = _select_worksheet(spreadsheet)
+            return worksheet.get_all_values()
+        except (gspread.exceptions.APIError, requests.RequestException) as e:
+            if isinstance(e, gspread.exceptions.APIError):
+                status = getattr(getattr(e, "response", None), "status_code", None)
+                if status not in _RETRYABLE_STATUS:
+                    raise
+            if attempt == _RETRY_ATTEMPTS:
+                raise
+            logger.warning(
+                "シート取得に失敗（%d/%d回目）。%d秒待って再試行します: %s",
+                attempt,
+                _RETRY_ATTEMPTS,
+                _RETRY_WAIT_SECONDS,
+                e,
+            )
+            time.sleep(_RETRY_WAIT_SECONDS)
+    raise RuntimeError("unreachable")
+
+
 def fetch_dashboard_from_sheets() -> DashboardSnapshot:
     if not SHEET_ID:
         raise RuntimeError("SHEET_ID が未設定です。.env を確認してください。")
@@ -346,15 +385,12 @@ def fetch_dashboard_from_sheets() -> DashboardSnapshot:
     ]
     creds = _build_credentials(scopes)
     client = gspread.authorize(creds)
-    spreadsheet = client.open_by_key(SHEET_ID)
-
-    worksheet = _select_worksheet(spreadsheet)
-    grid = worksheet.get_all_values()
+    grid = _fetch_grid_with_retry(client, SHEET_ID)
 
     snapshot = parse_dashboard(grid, today_local())
     if not snapshot.urgent and not snapshot.gray_items and snapshot.counts["total"] == 0:
         raise SheetSchemaError(
-            f"「{WORKSHEET_NAME or worksheet.title}」シートから案件を1件も読み取れませんでした。"
+            f"「{WORKSHEET_NAME or '先頭'}」シートから案件を1件も読み取れませんでした。"
             "シートの見出し（信号 / クライアント / タイトル / 不足項目 など）をご確認ください。"
         )
     return snapshot
