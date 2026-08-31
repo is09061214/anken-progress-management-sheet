@@ -1,13 +1,11 @@
 name: 撮影予定 月曜朝通知
 
 # 毎週月曜 朝 7:00 JST 頃に「今後 14 日間の撮影予定」を Discord に送る。
-# 設定: UTC 日曜 21:30 = JST 月曜 06:30
-# 30 分前倒しの理由:
-#   GitHub Actions の schedule cron はピーク時間で 15〜60 分遅延することが
-#   多いため、6:30 を狙って遅延しても 7:00 までには届くようにしている。
+# 起動方法（2026-09-01 変更）:
+#   GitHub の schedule cron は遅延が大きくなった（数時間遅れる日もある）ため廃止。
+#   代わりに Apps Script の時間トリガー（sheet/GitHub朝通知キック.gs）が
+#   毎週月曜 6:30 JST 頃に workflow_dispatch でこのワークフローを起動する。
 on:
-  schedule:
-    - cron: "30 21 * * 0"
   workflow_dispatch: {}
 
 jobs:
